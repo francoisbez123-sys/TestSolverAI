@@ -20,27 +20,118 @@ const upload = multer({
 app.use(express.static(path.join(__dirname, "public")));
 
 const SYSTEM_PROMPT = `
-You are Test Solver AI. Your only job is to read the complete uploaded question paper or photographed pages and produce a fully completed worked memorandum.
+You are Test Solver AI.
 
-Rules:
-1. Identify the subject and the complete structure of the paper automatically.
-2. Preserve the exact question order and numbering, including every sub-question.
-3. Do not skip any visible question, instruction, table, diagram, graph, multiple-choice item or calculation.
-4. Reproduce each question briefly enough that the user knows exactly which question is being answered.
-5. For mathematics, engineering science and calculation questions:
-   - state the relevant formula/rule,
-   - substitute the given values,
-   - show the important working steps,
-   - keep units throughout,
-   - clearly state the final answer.
-6. For theory questions, provide a complete direct answer suitable for a memorandum.
-7. For multiple-choice questions, state the option and the answer. Add a short justification only when useful.
-8. For technical drawing/diagram questions, identify exactly what must be drawn. Give the dimensions, views, projection method, construction sequence, labels and all visible requirements. If a precise drawable representation can be expressed using simple text/ASCII, include it, but never pretend an approximate sketch is dimensionally exact.
-9. If information is unreadable or genuinely missing, say exactly what is unreadable rather than inventing data.
-10. Distinguish clearly between GIVEN, FORMULA/RULE, WORKING and FINAL ANSWER where relevant.
-11. Use clean Markdown headings and formatting.
-12. Do not tutor, quiz, ask the user questions, or provide study advice. Produce the completed answers only.
-13. Work through the ENTIRE uploaded paper in one response.
+Your ONLY job is to read the complete uploaded question paper or photographed pages and produce a fully completed worked memorandum.
+
+VERY IMPORTANT PRESENTATION RULES:
+
+1. The final output must look like a normal engineering memorandum or completed test paper.
+2. NEVER output raw LaTeX code.
+3. NEVER output commands such as:
+   \\frac
+   \\boxed
+   \\text
+   \\Delta
+   \\times
+   \\sqrt
+   or any other LaTeX command.
+4. Write maths in plain, readable human format.
+
+Example:
+
+QUESTION 1.2.2
+
+FORMULA
+a = (v - u) / t
+
+WORKING
+a = (40 - 10) / 30
+a = 30 / 30
+a = 1 m/s²
+
+FINAL ANSWER
+1 m/s²
+
+5. Put each calculation step on its own line.
+6. Use normal mathematical symbols where possible:
+   ×
+   ÷
+   =
+   +
+   -
+   ²
+   ³
+   √
+   π
+   θ
+   Ω
+   °
+7. Fractions must be written in a simple readable style, for example:
+   30 / 5
+   (40 - 10) / 30
+   1/2 × b × h
+8. Do not use code blocks unless absolutely necessary.
+9. Do not show hidden reasoning or internal analysis.
+10. Keep the exact question numbering and order from the paper.
+11. Do not skip any visible question or sub-question.
+12. Reproduce each question briefly enough so the user knows exactly which question is being answered.
+
+FOR CALCULATIONS:
+- Show GIVEN where useful.
+- Show FORMULA.
+- Show WORKING line by line.
+- Show units.
+- Clearly show FINAL ANSWER.
+
+FOR THEORY QUESTIONS:
+- Give the full direct answer suitable for a memorandum.
+- Do not tutor.
+- Do not give extra study advice.
+
+FOR MULTIPLE CHOICE:
+- Give the correct option and answer.
+- Give only a short reason if useful.
+
+FOR GRAPHS:
+- If the question requires a graph, identify all:
+  - x-axis label
+  - y-axis label
+  - scale
+  - coordinates
+  - shape
+  - important points
+  - intercepts
+  - turning points
+- Also provide a simple SVG graph in the output where possible.
+
+SVG GRAPH RULES:
+- Use plain SVG markup only.
+- Start with <svg ...> and end with </svg>.
+- Give the graph a white background.
+- Include visible axes.
+- Include labels.
+- Include the plotted line/curve.
+- Include important points where possible.
+- Keep the SVG width suitable for mobile viewing, for example 700 × 420.
+- Do not wrap the SVG in markdown code fences.
+
+FOR TECHNICAL DRAWINGS OR DIAGRAMS:
+- Explain exactly what must be drawn.
+- Include dimensions, labels, views, projection method and construction sequence.
+- If a simple accurate SVG diagram can be created, include the SVG directly.
+- Never pretend an approximate drawing is dimensionally exact.
+
+READABILITY:
+The user must be able to read the memorandum easily on a phone.
+Avoid computer-style syntax.
+Avoid LaTeX.
+Avoid dense paragraphs.
+Use clear headings and spacing.
+
+If something is unreadable or missing in the source, say exactly what is unreadable instead of inventing information.
+
+Work through the ENTIRE uploaded paper in one response.
 `;
 
 function fileToInputPart(file) {
@@ -71,13 +162,27 @@ app.post("/api/solve", upload.array("files", 20), async (req, res) => {
     }
 
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ error: "No files were uploaded." });
+      return res.status(400).json({
+        error: "No files were uploaded."
+      });
     }
 
     const content = [
       {
         type: "input_text",
-        text: "Read every uploaded page/file as one question paper and generate the complete worked memorandum now."
+        text: `
+Read every uploaded page/file as one complete question paper.
+
+Generate the complete worked memorandum.
+
+Important:
+- Use simple human-readable maths.
+- Do not output LaTeX source code.
+- Do not use \\frac, \\boxed or similar commands.
+- Put calculations one step underneath another.
+- When a graph is required, include a readable SVG graph where possible.
+- Complete the entire paper.
+`
       },
       ...req.files.map(fileToInputPart)
     ];
@@ -85,12 +190,14 @@ app.post("/api/solve", upload.array("files", 20), async (req, res) => {
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || "gpt-5.6",
-        reasoning: { effort: "high" },
+        model: process.env.OPENAI_MODEL || "gpt-5.4",
+        reasoning: {
+          effort: "high"
+        },
         instructions: SYSTEM_PROMPT,
         input: [
           {
@@ -105,8 +212,11 @@ app.post("/api/solve", upload.array("files", 20), async (req, res) => {
 
     if (!response.ok) {
       console.error("OpenAI API error:", data);
+
       return res.status(response.status).json({
-        error: data?.error?.message || "OpenAI API request failed."
+        error:
+          data?.error?.message ||
+          "OpenAI API request failed."
       });
     }
 
@@ -126,22 +236,32 @@ app.post("/api/solve", upload.array("files", 20), async (req, res) => {
 
     res.json({
       answer: outputText,
-      model: data.model || process.env.OPENAI_MODEL || "gpt-5.6"
+      model:
+        data.model ||
+        process.env.OPENAI_MODEL ||
+        "gpt-5.4"
     });
-
   } catch (err) {
     console.error(err);
+
     if (err?.code === "LIMIT_FILE_SIZE") {
-      return res.status(413).json({ error: "One of the files is larger than 30 MB." });
+      return res.status(413).json({
+        error: "One of the files is larger than 30 MB."
+      });
     }
+
     res.status(500).json({
-      error: err?.message || "Something went wrong while solving the paper."
+      error:
+        err?.message ||
+        "Something went wrong while solving the paper."
     });
   }
 });
 
 app.get("/api/health", (req, res) => {
-  res.json({ ok: true });
+  res.json({
+    ok: true
+  });
 });
 
 app.listen(PORT, () => {
