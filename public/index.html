@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Test Solver AI</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon-192.png" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="hero">
+      <div class="logo">TS</div>
+      <div>
+        <h1>Test Solver AI</h1>
+        <p>Upload the paper. Generate the complete worked answers.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <input id="filePicker" type="file"
+        accept=".pdf,.doc,.docx,.txt,.rtf,.odt,image/jpeg,image/png,image/webp,image/heic,image/heif"
+        multiple hidden />
+      <input id="cameraPicker" type="file"
+        accept="image/*" capture="environment" hidden />
+
+      <div class="actions two">
+        <button id="uploadBtn" class="btn primary">📁 Upload File / Paper</button>
+        <button id="cameraBtn" class="btn secondary">📷 Take Photo</button>
+      </div>
+
+      <div id="fileArea" class="file-area empty">
+        <div id="emptyText">No pages selected yet.</div>
+        <div id="fileList"></div>
+      </div>
+
+      <div class="actions">
+        <button id="clearBtn" class="btn ghost" disabled>Clear</button>
+        <button id="solveBtn" class="btn solve" disabled>⚡ Generate Complete Answers</button>
+      </div>
+    </section>
+
+    <section id="statusCard" class="card status hidden">
+      <div class="spinner"></div>
+      <div>
+        <strong>Reading and solving the paper…</strong>
+        <p>This page will stay open while the answer is generated.</p>
+      </div>
+    </section>
+
+    <section id="resultCard" class="card result hidden">
+      <div class="result-head">
+        <div>
+          <div class="eyebrow">COMPLETED ANSWER PAPER</div>
+          <h2>Worked Memorandum</h2>
+        </div>
+        <div class="actions compact">
+          <button id="copyBtn" class="btn ghost">Copy</button>
+          <button id="printBtn" class="btn ghost">Print / Save PDF</button>
+        </div>
+      </div>
+      <article id="answer" class="answer"></article>
+    </section>
+
+    <p class="footer">Your OpenAI API key stays on the server — never in the phone app.</p>
+  </main>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
