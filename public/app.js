@@ -18,11 +18,131 @@ let lastMemo = null;
 
 
 /* =========================================================
+   TEST SOLVER AI V6.3 FRONTEND
+   PROFESSIONAL MEMORANDUM + MATHS RENDERING
+   ========================================================= */
+
+
+/* =========================================================
+   KATEX MATHS ENGINE
+   ========================================================= */
+
+let katexPromise = null;
+
+function loadKatex() {
+  if (window.katex) {
+    return Promise.resolve(window.katex);
+  }
+
+  if (katexPromise) {
+    return katexPromise;
+  }
+
+  katexPromise = new Promise((resolve, reject) => {
+
+    const existingCss =
+      document.querySelector(
+        'link[data-testsolver-katex="true"]'
+      );
+
+    if (!existingCss) {
+      const css =
+        document.createElement("link");
+
+      css.rel = "stylesheet";
+
+      css.href =
+        "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css";
+
+      css.setAttribute(
+        "data-testsolver-katex",
+        "true"
+      );
+
+      document.head.appendChild(css);
+    }
+
+
+    const existingScript =
+      document.querySelector(
+        'script[data-testsolver-katex="true"]'
+      );
+
+    if (existingScript) {
+
+      existingScript.addEventListener(
+        "load",
+        () => resolve(window.katex)
+      );
+
+      existingScript.addEventListener(
+        "error",
+        reject
+      );
+
+      return;
+    }
+
+
+    const script =
+      document.createElement("script");
+
+    script.src =
+      "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js";
+
+    script.defer = true;
+
+    script.setAttribute(
+      "data-testsolver-katex",
+      "true"
+    );
+
+
+    script.onload = () => {
+
+      if (window.katex) {
+        resolve(window.katex);
+      } else {
+        reject(
+          new Error(
+            "KaTeX loaded but was not available."
+          )
+        );
+      }
+    };
+
+
+    script.onerror = () => {
+
+      reject(
+        new Error(
+          "Could not load the maths renderer."
+        )
+      );
+    };
+
+
+    document.head.appendChild(
+      script
+    );
+  });
+
+
+  return katexPromise;
+}
+
+
+/* =========================================================
    FILE HANDLING
-========================================================= */
+   ========================================================= */
 
 function niceSize(bytes) {
-  const units = ["B", "KB", "MB", "GB"];
+  const units = [
+    "B",
+    "KB",
+    "MB",
+    "GB"
+  ];
 
   let value = bytes;
   let index = 0;
@@ -48,20 +168,25 @@ function renderFiles() {
     selectedFiles.length > 0;
 
   emptyText.style.display =
-    hasFiles ? "none" : "block";
+    hasFiles
+      ? "none"
+      : "block";
 
   fileArea.classList.toggle(
     "empty",
     !hasFiles
   );
 
+
   selectedFiles.forEach(
     (file, index) => {
+
       const row =
         document.createElement("div");
 
       row.className =
         "file-row";
+
 
       const name =
         document.createElement("div");
@@ -75,6 +200,7 @@ function renderFiles() {
           `Camera photo ${index + 1}`
         }`;
 
+
       const size =
         document.createElement("div");
 
@@ -84,6 +210,7 @@ function renderFiles() {
       size.textContent =
         niceSize(file.size);
 
+
       row.append(
         name,
         size
@@ -92,6 +219,7 @@ function renderFiles() {
       fileList.appendChild(row);
     }
   );
+
 
   solveBtn.disabled =
     !hasFiles;
@@ -103,7 +231,9 @@ function renderFiles() {
 
 function addFiles(files) {
   const incoming =
-    Array.from(files || []);
+    Array.from(
+      files || []
+    );
 
   selectedFiles.push(
     ...incoming
@@ -115,7 +245,7 @@ function addFiles(files) {
 
 /* =========================================================
    TEXT HELPERS
-========================================================= */
+   ========================================================= */
 
 function cleanText(value) {
   return String(
@@ -146,8 +276,79 @@ function makeDiv(
 
 
 /* =========================================================
+   MATHS RENDERING
+   ========================================================= */
+
+function renderMathLine(
+  mathSource,
+  fallbackText
+) {
+  const row =
+    document.createElement("div");
+
+  row.className =
+    "memo-equation memo-equation-math";
+
+
+  const source =
+    String(
+      mathSource || ""
+    ).trim();
+
+
+  if (
+    source &&
+    window.katex
+  ) {
+
+    try {
+
+      window.katex.render(
+        source,
+        row,
+        {
+          displayMode: true,
+
+          throwOnError: false,
+
+          strict: false,
+
+          trust: false,
+
+          output:
+            "htmlAndMathml"
+        }
+      );
+
+      return row;
+
+    } catch (error) {
+
+      console.warn(
+        "Math rendering fallback:",
+        error
+      );
+    }
+  }
+
+
+  row.classList.add(
+    "memo-equation-fallback"
+  );
+
+  row.textContent =
+    cleanText(
+      fallbackText ||
+      mathSource
+    );
+
+  return row;
+}
+
+
+/* =========================================================
    SVG SANITISER
-========================================================= */
+   ========================================================= */
 
 const allowedSvgTags =
   new Set([
@@ -208,7 +409,9 @@ const allowedSvgAttributes =
 
 
 function sanitizeSvg(svgText) {
+
   try {
+
     const parser =
       new DOMParser();
 
@@ -218,6 +421,7 @@ function sanitizeSvg(svgText) {
         "image/svg+xml"
       );
 
+
     if (
       doc.querySelector(
         "parsererror"
@@ -226,8 +430,10 @@ function sanitizeSvg(svgText) {
       return null;
     }
 
+
     const svg =
       doc.documentElement;
+
 
     if (
       !svg ||
@@ -237,9 +443,12 @@ function sanitizeSvg(svgText) {
       return null;
     }
 
+
     function cleanElement(el) {
+
       const tag =
         el.tagName.toLowerCase();
+
 
       if (
         !allowedSvgTags.has(tag)
@@ -248,9 +457,11 @@ function sanitizeSvg(svgText) {
         return;
       }
 
+
       [
         ...el.attributes
       ].forEach(attr => {
+
         const name =
           attr.name;
 
@@ -259,6 +470,7 @@ function sanitizeSvg(svgText) {
 
         const value =
           attr.value || "";
+
 
         if (
           lower.startsWith("on") ||
@@ -270,25 +482,38 @@ function sanitizeSvg(svgText) {
               "javascript:"
             )
         ) {
-          el.removeAttribute(name);
+
+          el.removeAttribute(
+            name
+          );
+
           return;
         }
+
 
         if (
           !allowedSvgAttributes.has(
             name
           )
         ) {
-          el.removeAttribute(name);
+
+          el.removeAttribute(
+            name
+          );
         }
       });
 
+
       [
         ...el.children
-      ].forEach(cleanElement);
+      ].forEach(
+        cleanElement
+      );
     }
 
+
     cleanElement(svg);
+
 
     svg.setAttribute(
       "width",
@@ -300,23 +525,28 @@ function sanitizeSvg(svgText) {
       "auto"
     );
 
+
     if (
       !svg.getAttribute(
         "viewBox"
       )
     ) {
+
       svg.setAttribute(
         "viewBox",
         "0 0 700 420"
       );
     }
 
+
     return document.importNode(
       svg,
       true
     );
 
+
   } catch (error) {
+
     console.error(
       "SVG error:",
       error
@@ -329,28 +559,32 @@ function sanitizeSvg(svgText) {
 
 /* =========================================================
    GRAPH ENGINE
-========================================================= */
+   ========================================================= */
 
 function createSvgElement(
   tag,
   attrs = {}
 ) {
+
   const el =
     document.createElementNS(
       "http://www.w3.org/2000/svg",
       tag
     );
 
+
   Object.entries(
     attrs
   ).forEach(
     ([key, value]) => {
+
       el.setAttribute(
         key,
         value
       );
     }
   );
+
 
   return el;
 }
@@ -360,6 +594,7 @@ function createSvgText(
   text,
   attrs
 ) {
+
   const el =
     createSvgElement(
       "text",
@@ -376,6 +611,7 @@ function createSvgText(
 function buildLineGraph(
   diagram
 ) {
+
   const xs =
     Array.isArray(
       diagram?.x_values
@@ -383,12 +619,14 @@ function buildLineGraph(
       ? diagram.x_values
       : [];
 
+
   const ys =
     Array.isArray(
       diagram?.y_values
     )
       ? diagram.y_values
       : [];
+
 
   if (
     xs.length < 2 ||
@@ -398,13 +636,14 @@ function buildLineGraph(
     return null;
   }
 
+
   const width = 720;
-  const height = 440;
+  const height = 410;
 
   const left = 90;
   const right = 35;
-  const top = 60;
-  const bottom = 80;
+  const top = 30;
+  const bottom = 75;
 
   const plotW =
     width -
@@ -415,6 +654,7 @@ function buildLineGraph(
     height -
     top -
     bottom;
+
 
   const minX =
     Math.min(
@@ -440,24 +680,34 @@ function buildLineGraph(
       ...ys
     );
 
+
   const xRange =
-    maxX - minX || 1;
+    maxX -
+    minX || 1;
 
   const yRange =
-    maxY - minY || 1;
+    maxY -
+    minY || 1;
+
 
   const px = value =>
     left +
-    ((value - minX) /
-      xRange) *
-      plotW;
+    (
+      (value - minX) /
+      xRange
+    ) *
+    plotW;
+
 
   const py = value =>
     top +
     plotH -
-    ((value - minY) /
-      yRange) *
-      plotH;
+    (
+      (value - minY) /
+      yRange
+    ) *
+    plotH;
+
 
   const svg =
     createSvgElement(
@@ -465,117 +715,14 @@ function buildLineGraph(
       {
         viewBox:
           `0 0 ${width} ${height}`,
-        width: "100%",
-        height: "auto"
+
+        width:
+          "100%",
+
+        height:
+          "auto"
       }
     );
-
-
-  /* TITLE */
-
-  svg.appendChild(
-    createSvgText(
-      diagram.title ||
-        "Graph",
-      {
-        x: width / 2,
-        y: 28,
-        "text-anchor":
-          "middle",
-        "font-size": 21,
-        "font-weight": 700
-      }
-    )
-  );
-
-
-  /* GRID + X LABELS */
-
-  xs.forEach(x => {
-    svg.appendChild(
-      createSvgElement(
-        "line",
-        {
-          x1: px(x),
-          y1: top,
-          x2: px(x),
-          y2:
-            top +
-            plotH,
-          stroke:
-            "#d1d5db",
-          "stroke-width":
-            1
-        }
-      )
-    );
-
-    svg.appendChild(
-      createSvgText(
-        x,
-        {
-          x: px(x),
-          y:
-            top +
-            plotH +
-            27,
-          "text-anchor":
-            "middle",
-          "font-size": 14
-        }
-      )
-    );
-  });
-
-
-  /* Y TICKS */
-
-  const uniqueY =
-    [
-      ...new Set(
-        [0, ...ys]
-      )
-    ].sort(
-      (a, b) =>
-        a - b
-    );
-
-  uniqueY.forEach(y => {
-    svg.appendChild(
-      createSvgElement(
-        "line",
-        {
-          x1: left,
-          y1: py(y),
-          x2:
-            left +
-            plotW,
-          y2: py(y),
-          stroke:
-            "#d1d5db",
-          "stroke-width":
-            1
-        }
-      )
-    );
-
-    svg.appendChild(
-      createSvgText(
-        y,
-        {
-          x:
-            left -
-            14,
-          y:
-            py(y) +
-            5,
-          "text-anchor":
-            "end",
-          "font-size": 14
-        }
-      )
-    );
-  });
 
 
   /* AXES */
@@ -588,13 +735,15 @@ function buildLineGraph(
         y1: top,
         x2: left,
         y2:
-          top +
-          plotH,
-        stroke: "black",
-        "stroke-width": 2
+          top + plotH,
+        stroke:
+          "black",
+        "stroke-width":
+          2
       }
     )
   );
+
 
   svg.appendChild(
     createSvgElement(
@@ -602,19 +751,145 @@ function buildLineGraph(
       {
         x1: left,
         y1:
-          top +
-          plotH,
+          top + plotH,
         x2:
-          left +
-          plotW,
+          left + plotW,
         y2:
-          top +
-          plotH,
-        stroke: "black",
-        "stroke-width": 2
+          top + plotH,
+        stroke:
+          "black",
+        "stroke-width":
+          2
       }
     )
   );
+
+
+  /* X TICKS */
+
+  const uniqueX =
+    [
+      ...new Set(xs)
+    ].sort(
+      (a, b) =>
+        a - b
+    );
+
+
+  uniqueX.forEach(x => {
+
+    svg.appendChild(
+      createSvgElement(
+        "line",
+        {
+          x1:
+            px(x),
+
+          y1:
+            top + plotH,
+
+          x2:
+            px(x),
+
+          y2:
+            top + plotH + 7,
+
+          stroke:
+            "black",
+
+          "stroke-width":
+            1.3
+        }
+      )
+    );
+
+
+    svg.appendChild(
+      createSvgText(
+        x,
+        {
+          x:
+            px(x),
+
+          y:
+            top +
+            plotH +
+            27,
+
+          "text-anchor":
+            "middle",
+
+          "font-size":
+            14
+        }
+      )
+    );
+  });
+
+
+  /* Y TICKS */
+
+  const uniqueY =
+    [
+      ...new Set(
+        [
+          0,
+          ...ys
+        ]
+      )
+    ].sort(
+      (a, b) =>
+        a - b
+    );
+
+
+  uniqueY.forEach(y => {
+
+    svg.appendChild(
+      createSvgElement(
+        "line",
+        {
+          x1:
+            left - 7,
+
+          y1:
+            py(y),
+
+          x2:
+            left,
+
+          y2:
+            py(y),
+
+          stroke:
+            "black",
+
+          "stroke-width":
+            1.3
+        }
+      )
+    );
+
+
+    svg.appendChild(
+      createSvgText(
+        y,
+        {
+          x:
+            left - 14,
+
+          y:
+            py(y) + 5,
+
+          "text-anchor":
+            "end",
+
+          "font-size":
+            14
+        }
+      )
+    );
+  });
 
 
   /* GRAPH LINE */
@@ -626,18 +901,27 @@ function buildLineGraph(
           ys[index]
         )}`
     )
-    .join(" ");
+      .join(" ");
+
 
   svg.appendChild(
     createSvgElement(
       "polyline",
       {
         points,
-        fill: "none",
-        stroke: "black",
-        "stroke-width": 4,
+
+        fill:
+          "none",
+
+        stroke:
+          "black",
+
+        "stroke-width":
+          2.5,
+
         "stroke-linecap":
           "round",
+
         "stroke-linejoin":
           "round"
       }
@@ -645,20 +929,28 @@ function buildLineGraph(
   );
 
 
-  /* DATA POINTS */
+  /* POINTS */
 
   xs.forEach(
     (x, index) => {
+
       svg.appendChild(
         createSvgElement(
           "circle",
           {
-            cx: px(x),
-            cy: py(
-              ys[index]
-            ),
-            r: 4,
-            fill: "black"
+            cx:
+              px(x),
+
+            cy:
+              py(
+                ys[index]
+              ),
+
+            r:
+              3,
+
+            fill:
+              "black"
           }
         )
       );
@@ -666,7 +958,7 @@ function buildLineGraph(
   );
 
 
-  /* X AXIS NAME */
+  /* X AXIS LABEL */
 
   svg.appendChild(
     createSvgText(
@@ -676,35 +968,42 @@ function buildLineGraph(
         x:
           left +
           plotW / 2,
+
         y:
-          height -
-          18,
+          height - 16,
+
         "text-anchor":
           "middle",
-        "font-size": 17,
-        "font-weight": 700
+
+        "font-size":
+          17
       }
     )
   );
 
 
-  /* Y AXIS NAME */
+  /* Y AXIS LABEL */
 
   const yLabel =
     createSvgText(
       diagram.y_label ||
         "y",
       {
-        x: 24,
+        x:
+          24,
+
         y:
           top +
           plotH / 2,
+
         "text-anchor":
           "middle",
-        "font-size": 17,
-        "font-weight": 700
+
+        "font-size":
+          17
       }
     );
+
 
   yLabel.setAttribute(
     "transform",
@@ -714,9 +1013,11 @@ function buildLineGraph(
     })`
   );
 
+
   svg.appendChild(
     yLabel
   );
+
 
   return svg;
 }
@@ -724,11 +1025,12 @@ function buildLineGraph(
 
 /* =========================================================
    DIAGRAM WRAPPER
-========================================================= */
+   ========================================================= */
 
 function makeDiagramBox(
   title
 ) {
+
   const wrapper =
     document.createElement(
       "div"
@@ -737,34 +1039,39 @@ function makeDiagramBox(
   wrapper.className =
     "memo-diagram";
 
-  const heading =
-    document.createElement(
-      "div"
+
+  if (title) {
+
+    const heading =
+      document.createElement(
+        "div"
+      );
+
+    heading.className =
+      "memo-diagram-title";
+
+    heading.textContent =
+      title;
+
+    wrapper.appendChild(
+      heading
     );
+  }
 
-  heading.className =
-    "memo-diagram-title";
-
-  heading.textContent =
-    title ||
-    "GRAPH / DIAGRAM";
-
-  wrapper.appendChild(
-    heading
-  );
 
   return wrapper;
 }
 
 
 /* =========================================================
-   RENDER ONE BLOCK
-========================================================= */
+   RENDER ONE MEMO BLOCK
+   ========================================================= */
 
 function renderBlock(
   block,
   container
 ) {
+
   if (!block) return;
 
 
@@ -774,7 +1081,9 @@ function renderBlock(
     block.type ===
     "text"
   ) {
+
     if (block.text) {
+
       container.appendChild(
         makeDiv(
           "memo-text",
@@ -787,39 +1096,70 @@ function renderBlock(
   }
 
 
-  /* EQUATIONS */
+  /* EQUATION */
 
   if (
     block.type ===
     "equation"
   ) {
-    const eq =
+
+    const group =
       document.createElement(
         "div"
       );
 
-    eq.className =
+    group.className =
       "memo-equation-group";
 
-    (
-      block.lines || []
-    ).forEach(line => {
-      const row =
-        document.createElement(
-          "div"
-        );
 
-      row.className =
-        "memo-equation";
+    const normalLines =
+      Array.isArray(
+        block.lines
+      )
+        ? block.lines
+        : [];
 
-      row.textContent =
-        cleanText(line);
 
-      eq.appendChild(row);
-    });
+    const mathLines =
+      Array.isArray(
+        block.math_lines
+      )
+        ? block.math_lines
+        : [];
+
+
+    const count =
+      Math.max(
+        normalLines.length,
+        mathLines.length
+      );
+
+
+    for (
+      let index = 0;
+      index < count;
+      index++
+    ) {
+
+      const mathSource =
+        mathLines[index] || "";
+
+      const fallback =
+        normalLines[index] ||
+        mathSource;
+
+
+      group.appendChild(
+        renderMathLine(
+          mathSource,
+          fallback
+        )
+      );
+    }
+
 
     container.appendChild(
-      eq
+      group
     );
 
     return;
@@ -832,6 +1172,7 @@ function renderBlock(
     block.type ===
     "list"
   ) {
+
     const ul =
       document.createElement(
         "ul"
@@ -840,9 +1181,11 @@ function renderBlock(
     ul.className =
       "memo-list";
 
+
     (
       block.items || []
     ).forEach(item => {
+
       const li =
         document.createElement(
           "li"
@@ -853,6 +1196,7 @@ function renderBlock(
 
       ul.appendChild(li);
     });
+
 
     container.appendChild(
       ul
@@ -868,11 +1212,20 @@ function renderBlock(
     block.type ===
     "or"
   ) {
+
+    const orBox =
+      document.createElement(
+        "div"
+      );
+
+    orBox.className =
+      "memo-or";
+
+    orBox.textContent =
+      "OR";
+
     container.appendChild(
-      makeDiv(
-        "memo-or",
-        "OR"
-      )
+      orBox
     );
 
     return;
@@ -885,10 +1238,12 @@ function renderBlock(
     block.type ===
     "graph"
   ) {
+
     const graph =
       buildLineGraph(
         block.diagram
       );
+
 
     const box =
       makeDiagramBox(
@@ -897,11 +1252,15 @@ function renderBlock(
         "GRAPH"
       );
 
+
     if (graph) {
+
       box.appendChild(
         graph
       );
+
     } else {
+
       box.appendChild(
         makeDiv(
           "memo-diagram-error",
@@ -910,6 +1269,7 @@ function renderBlock(
       );
     }
 
+
     container.appendChild(
       box
     );
@@ -918,12 +1278,13 @@ function renderBlock(
   }
 
 
-  /* SOURCE / TECHNICAL SVG */
+  /* TECHNICAL / SOURCE DIAGRAM */
 
   if (
     block.type ===
     "diagram"
   ) {
+
     const box =
       makeDiagramBox(
         block?.diagram
@@ -931,17 +1292,22 @@ function renderBlock(
         "DIAGRAM"
       );
 
+
     const safeSvg =
       sanitizeSvg(
         block?.diagram
           ?.svg || ""
       );
 
+
     if (safeSvg) {
+
       box.appendChild(
         safeSvg
       );
+
     } else {
+
       box.appendChild(
         makeDiv(
           "memo-diagram-error",
@@ -950,23 +1316,29 @@ function renderBlock(
       );
     }
 
+
     container.appendChild(
       box
     );
+
+    return;
   }
 }
 
 
 /* =========================================================
    RENDER STRUCTURED MEMORANDUM
-========================================================= */
+   ========================================================= */
 
-function renderStructuredMemo(
+async function renderStructuredMemo(
   memo
 ) {
+
   answer.innerHTML = "";
 
+
   if (!memo) {
+
     answer.textContent =
       "No memorandum was returned.";
 
@@ -974,9 +1346,29 @@ function renderStructuredMemo(
   }
 
 
+  /*
+   * Load maths engine BEFORE rendering.
+   * If it fails, normal text equations
+   * still render automatically.
+   */
+
+  try {
+
+    await loadKatex();
+
+  } catch (error) {
+
+    console.warn(
+      "Maths renderer unavailable. Using fallback equations.",
+      error
+    );
+  }
+
+
   /* DOCUMENT TITLE */
 
   if (memo.title) {
+
     const title =
       document.createElement(
         "div"
@@ -995,6 +1387,7 @@ function renderStructuredMemo(
 
 
   if (memo.subtitle) {
+
     const subtitle =
       document.createElement(
         "div"
@@ -1026,10 +1419,12 @@ function renderStructuredMemo(
     heading.className =
       "memo-question";
 
+
     const headingText =
       cleanText(
         section.heading
       );
+
 
     heading.textContent =
       /^QUESTION/i.test(
@@ -1037,6 +1432,7 @@ function renderStructuredMemo(
       )
         ? headingText
         : `QUESTION ${headingText}`;
+
 
     answer.appendChild(
       heading
@@ -1064,6 +1460,7 @@ function renderStructuredMemo(
       q.className =
         "memo-subquestion";
 
+
       q.textContent =
         [
           item.number,
@@ -1071,6 +1468,7 @@ function renderStructuredMemo(
         ]
           .filter(Boolean)
           .join(" ");
+
 
       itemBox.appendChild(
         q
@@ -1080,6 +1478,7 @@ function renderStructuredMemo(
       (
         item.blocks || []
       ).forEach(block => {
+
         renderBlock(
           block,
           itemBox
@@ -1097,17 +1496,23 @@ function renderStructuredMemo(
 
 /* =========================================================
    FALLBACK TEXT RENDERER
-========================================================= */
+   ========================================================= */
 
 function renderFallbackText(
   text
 ) {
+
   answer.innerHTML = "";
 
-  String(text || "")
+
+  String(
+    text || ""
+  )
     .split(/\r?\n/)
     .forEach(line => {
+
       if (!line.trim()) {
+
         const gap =
           document.createElement(
             "div"
@@ -1123,6 +1528,7 @@ function renderFallbackText(
         return;
       }
 
+
       answer.appendChild(
         makeDiv(
           "memo-text",
@@ -1134,12 +1540,181 @@ function renderFallbackText(
 
 
 /* =========================================================
+   PLAIN-TEXT MEMO FOR COPYING
+   ========================================================= */
+
+function memoToPlainText(
+  memo
+) {
+
+  if (!memo) {
+    return answer.innerText;
+  }
+
+
+  const output = [];
+
+
+  if (memo.title) {
+    output.push(
+      memo.title
+    );
+  }
+
+
+  if (memo.subtitle) {
+    output.push(
+      memo.subtitle
+    );
+  }
+
+
+  output.push("");
+
+
+  (
+    memo.questions || []
+  ).forEach(section => {
+
+    const heading =
+      cleanText(
+        section.heading
+      );
+
+
+    output.push(
+      /^QUESTION/i.test(
+        heading
+      )
+        ? heading
+        : `QUESTION ${heading}`
+    );
+
+    output.push("");
+
+
+    (
+      section.items || []
+    ).forEach(item => {
+
+      output.push(
+        [
+          item.number,
+          item.question_text
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+
+
+      (
+        item.blocks || []
+      ).forEach(block => {
+
+        if (
+          block.type ===
+          "text"
+        ) {
+
+          if (block.text) {
+            output.push(
+              cleanText(
+                block.text
+              )
+            );
+          }
+        }
+
+
+        if (
+          block.type ===
+          "equation"
+        ) {
+
+          (
+            block.lines || []
+          ).forEach(line => {
+
+            output.push(
+              cleanText(line)
+            );
+          });
+        }
+
+
+        if (
+          block.type ===
+          "list"
+        ) {
+
+          (
+            block.items || []
+          ).forEach(itemText => {
+
+            output.push(
+              `• ${cleanText(
+                itemText
+              )}`
+            );
+          });
+        }
+
+
+        if (
+          block.type ===
+          "or"
+        ) {
+
+          output.push(
+            "OR"
+          );
+        }
+
+
+        if (
+          block.type ===
+          "graph"
+        ) {
+
+          output.push(
+            block?.diagram
+              ?.title ||
+            "GRAPH"
+          );
+        }
+
+
+        if (
+          block.type ===
+          "diagram"
+        ) {
+
+          output.push(
+            block?.diagram
+              ?.title ||
+            "DIAGRAM"
+          );
+        }
+      });
+
+
+      output.push("");
+    });
+  });
+
+
+  return output.join("\n");
+}
+
+
+/* =========================================================
    BUTTON EVENTS
-========================================================= */
+   ========================================================= */
 
 uploadBtn.addEventListener(
   "click",
   () => {
+
     filePicker.click();
   }
 );
@@ -1148,6 +1723,7 @@ uploadBtn.addEventListener(
 cameraBtn.addEventListener(
   "click",
   () => {
+
     cameraPicker.click();
   }
 );
@@ -1156,6 +1732,7 @@ cameraBtn.addEventListener(
 filePicker.addEventListener(
   "change",
   () => {
+
     addFiles(
       filePicker.files
     );
@@ -1168,6 +1745,7 @@ filePicker.addEventListener(
 cameraPicker.addEventListener(
   "change",
   () => {
+
     addFiles(
       cameraPicker.files
     );
@@ -1180,7 +1758,9 @@ cameraPicker.addEventListener(
 clearBtn.addEventListener(
   "click",
   () => {
+
     selectedFiles = [];
+
     lastMemo = null;
 
     answer.innerHTML = "";
@@ -1196,16 +1776,18 @@ clearBtn.addEventListener(
 
 /* =========================================================
    GENERATE MEMORANDUM
-========================================================= */
+   ========================================================= */
 
 solveBtn.addEventListener(
   "click",
   async () => {
+
     if (
       !selectedFiles.length
     ) {
       return;
     }
+
 
     resultCard.classList.add(
       "hidden"
@@ -1215,17 +1797,21 @@ solveBtn.addEventListener(
       "hidden"
     );
 
+
     solveBtn.disabled = true;
     clearBtn.disabled = true;
 
     answer.innerHTML = "";
     lastMemo = null;
 
+
     const form =
       new FormData();
 
+
     selectedFiles.forEach(
       file => {
+
         form.append(
           "files",
           file,
@@ -1235,55 +1821,88 @@ solveBtn.addEventListener(
       }
     );
 
+
     try {
+
       const response =
         await fetch(
           "/api/solve",
           {
-            method: "POST",
-            body: form
+            method:
+              "POST",
+
+            body:
+              form
           }
         );
 
-      const data =
-        await response.json();
+
+      let data;
+
+
+      try {
+
+        data =
+          await response.json();
+
+      } catch {
+
+        throw new Error(
+          "The server returned an invalid response."
+        );
+      }
+
 
       if (!response.ok) {
+
         throw new Error(
           data.error ||
           "Could not generate the memorandum."
         );
       }
 
+
       lastMemo =
         data.structured ||
         null;
 
+
       if (lastMemo) {
-        renderStructuredMemo(
+
+        await renderStructuredMemo(
           lastMemo
         );
+
       } else {
+
         renderFallbackText(
           data.answer
         );
       }
 
+
       resultCard.classList.remove(
         "hidden"
       );
 
+
       resultCard.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
+        behavior:
+          "smooth",
+
+        block:
+          "start"
       });
 
+
     } catch (error) {
+
       resultCard.classList.remove(
         "hidden"
       );
 
       answer.innerHTML = "";
+
 
       const box =
         document.createElement(
@@ -1297,14 +1916,18 @@ solveBtn.addEventListener(
         error?.message ||
         "Something went wrong.";
 
+
       answer.appendChild(
         box
       );
 
+
     } finally {
+
       statusCard.classList.add(
         "hidden"
       );
+
 
       solveBtn.disabled =
         selectedFiles.length === 0;
@@ -1318,33 +1941,47 @@ solveBtn.addEventListener(
 
 /* =========================================================
    COPY
-========================================================= */
+   ========================================================= */
 
 copyBtn.addEventListener(
   "click",
   async () => {
+
     try {
+
       const text =
-        answer.innerText;
+        lastMemo
+          ? memoToPlainText(
+              lastMemo
+            )
+          : answer.innerText;
+
 
       await navigator.clipboard
         .writeText(text);
 
+
       const old =
         copyBtn.textContent;
+
 
       copyBtn.textContent =
         "Copied ✓";
 
+
       setTimeout(
         () => {
+
           copyBtn.textContent =
             old;
+
         },
         1200
       );
 
+
     } catch {
+
       alert(
         "Could not copy the memorandum."
       );
@@ -1355,11 +1992,12 @@ copyBtn.addEventListener(
 
 /* =========================================================
    PRINT / SAVE PDF
-========================================================= */
+   ========================================================= */
 
 printBtn.addEventListener(
   "click",
   () => {
+
     window.print();
   }
 );
@@ -1367,18 +2005,23 @@ printBtn.addEventListener(
 
 /* =========================================================
    SERVICE WORKER
-========================================================= */
+   ========================================================= */
 
 if (
   "serviceWorker"
   in navigator
 ) {
+
   window.addEventListener(
     "load",
     () => {
+
       navigator.serviceWorker
-        .register("/sw.js")
+        .register(
+          "/sw.js"
+        )
         .catch(error => {
+
           console.log(
             "Service worker:",
             error
@@ -1389,4 +2032,23 @@ if (
 }
 
 
+/* =========================================================
+   START
+   ========================================================= */
+
 renderFiles();
+
+
+/*
+ * Preload KaTeX quietly.
+ * This costs NO OpenAI API credits.
+ */
+
+loadKatex()
+  .catch(error => {
+
+    console.warn(
+      "KaTeX preload:",
+      error
+    );
+  });
