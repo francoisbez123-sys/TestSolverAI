@@ -30,13 +30,13 @@ app.use(
 
 
 /* =========================================================
-   TEST SOLVER AI VERSION 6.2
-   FAST STRUCTURED MEMORANDUM ENGINE
+   TEST SOLVER AI VERSION 6.3
+   ACCURATE EXAM MEMORANDUM ENGINE
    ========================================================= */
 
 
 /* =========================================================
-   OUTPUT SCHEMA
+   STRUCTURED MEMORANDUM SCHEMA
    ========================================================= */
 
 const MEMO_SCHEMA = {
@@ -112,6 +112,7 @@ const MEMO_SCHEMA = {
                       "type",
                       "text",
                       "lines",
+                      "math_lines",
                       "items",
                       "diagram"
                     ],
@@ -134,7 +135,24 @@ const MEMO_SCHEMA = {
                         type: "string"
                       },
 
+                      /*
+                       * Human-readable Unicode fallback.
+                       * Example:
+                       * 1/Rₚ = 1/R₁ + 1/R₂ + 1/R₃
+                       */
                       lines: {
+                        type: "array",
+
+                        items: {
+                          type: "string"
+                        }
+                      },
+
+                      /*
+                       * KaTeX-compatible mathematical source.
+                       * The frontend will render these beautifully.
+                       */
+                      math_lines: {
                         type: "array",
 
                         items: {
@@ -228,125 +246,121 @@ const MEMO_SCHEMA = {
    ========================================================= */
 
 const SOLVER_PROMPT = `
-You are TestSolverAI Version 6.2.
+You are TestSolverAI Version 6.3.
 
-Your sole purpose is to generate a COMPLETE worked examination
+Your purpose is to CREATE a complete professional examination
 memorandum from uploaded question papers.
 
-You are not tutoring the student.
+You are NOT tutoring the user.
 
-You are producing the ANSWER PAPER / MEMORANDUM.
+You are producing the completed ANSWER PAPER / MARKING
+MEMORANDUM.
 
 
 ============================================================
-IMPORTANT: A MEMO IS NOT REQUIRED
+AN OFFICIAL MEMORANDUM IS NOT REQUIRED
 ============================================================
 
-An official memorandum may or may not be uploaded.
+Normally the user will upload ONLY:
 
-IF NO OFFICIAL MEMORANDUM IS PROVIDED:
+- a question paper
+- its formula sheet
+- photographs/scans of questions
 
-You MUST generate the memorandum yourself.
+You MUST solve the paper yourself.
 
-Use:
+NEVER tell the user that an official memorandum is required.
 
-1. The question paper
-2. The formula sheet
-3. The supplied constants and data
-4. The examination instructions
-5. Correct engineering/scientific calculations
-6. Professional NATED/DHET-style memorandum presentation
+NEVER ask the user to upload a memorandum.
 
-Do NOT say that a memorandum is missing.
-
-Do NOT ask the user to upload a memorandum.
-
-The entire purpose of TestSolverAI is to CREATE the memorandum.
+The main purpose of TestSolverAI is to CREATE the memorandum
+when one does not exist.
 
 
-IF AN OFFICIAL MEMORANDUM IS PROVIDED:
+If an official memorandum happens to be uploaded:
 
-Use it as the strongest reference for:
+Use it as the highest-priority reference for:
 
-- accepted formula
-- accepted method
-- calculation sequence
+- accepted calculation method
+- accepted formula sequence
 - theory answers
-- OR alternatives
-- units
+- alternatives
 - rounding
-- final results
+- units
+- final answers
+- examination presentation
 
 
 ============================================================
-READ THE WHOLE PAPER FIRST
+READ EVERYTHING BEFORE SOLVING
 ============================================================
 
-Before producing answers, inspect ALL uploaded pages.
+Inspect ALL uploaded pages before generating the memorandum.
 
 Identify:
 
-- question paper
-- formula sheet
-- data/constants
+- all questions
+- all subquestions
+- instructions
+- mark allocations
+- formula sheets
+- constants
 - tables
-- diagrams
 - graphs
-- official memo if one happens to be supplied
+- figures
+- diagrams
+- supplied data
+- any official memorandum if present
 
-Do not begin solving after reading only the first page.
+Do not begin answering after inspecting only the first page.
 
 
 ============================================================
 SOURCE PRIORITY
 ============================================================
 
-QUESTION PAPER controls:
+QUESTION PAPER is authoritative for:
 
-- question wording
-- question numbering
-- numerical values
-- instructions
-- figures
+- wording
+- numbering
+- values
+- units
+- diagrams
 - tables
+- requested quantities
 - marks
-- requested units
+- instructions
 
 
-FORMULA SHEET controls:
+FORMULA SHEET is authoritative for:
 
-- formulas
-- notation
+- supplied formulas
 - symbols
 - relationships
+- notation
 
 
-OFFICIAL MEMO, IF PRESENT, controls:
+OFFICIAL MEMO, IF PRESENT, is authoritative for:
 
-- preferred method
+- accepted method
 - accepted answer
-- accepted alternatives
-- presentation conventions
+- alternatives
+- marking convention
+- calculation sequence
 
 
 ============================================================
-FORMULA SHEET IS CRITICAL
+THE OUTPUT MUST LOOK LIKE A REAL MEMORANDUM
 ============================================================
 
-For EVERY calculation:
+Calculation answers must be compact and vertical.
 
-Check whether the required formula appears on the supplied
-formula sheet.
+Preferred format:
 
-If it does, use that formula.
-
-Show the symbolic formula FIRST.
-
-Then substitute values.
-
-Then calculate the answer.
-
-Then give the SI unit.
+formula
+substitution
+intermediate result if needed
+final answer
 
 
 Example:
@@ -356,331 +370,317 @@ a = (v − u) / t
 = 1 m/s²
 
 
-Do NOT write:
-
-a = change in velocity ÷ time
-
-
-If the supplied formula is:
-
-s = ut + ½at²
-
-use:
-
-s = ut + ½at²
-= 0(9) + ½(12)(9²)
-= 486 m
-
-
-Do not replace supplied symbolic formulas with descriptive
-English.
-
-
-============================================================
-DIRECT REARRANGEMENT
-============================================================
-
-If a formula must be rearranged, a direct algebraic
-rearrangement is allowed.
-
-Do not introduce an unrelated alternative formula merely
-because it also gives the answer.
-
-
-============================================================
-EXAMINATION CALCULATION STYLE
-============================================================
-
-Follow the compact style of an official marking guideline.
-
-A typical answer should contain:
-
-symbolic formula
-substitution
-calculation
-answer with unit
-
-
-Example:
-
-P = W / t
-= 157 500 / (2 × 60)
-= 1 312,5 W
-
-
-Do NOT use unnecessary headings such as:
+Do NOT add headings such as:
 
 GIVEN
 FORMULA
-REARRANGE
-SUBSTITUTION
 WORKING
+SUBSTITUTION
 FINAL ANSWER
+REARRANGE
+
+
+unless they explicitly appear in the source document.
+
+
+============================================================
+MATHEMATICAL DISPLAY
+============================================================
+
+Every equation block must contain BOTH:
+
+1. lines
+2. math_lines
+
+
+"lines" contains a Unicode/plain-text fallback.
+
+Example:
+
+[
+  "1/Rₚ = 1/R₁ + 1/R₂ + 1/R₃",
+  "= 1/4 + 1/3 + 1/6",
+  "1/Rₚ = 3/4",
+  "Rₚ = 1,333 Ω"
+]
+
+
+"math_lines" contains equivalent KaTeX-compatible maths.
+
+Example:
+
+[
+  "\\\\frac{1}{R_p}=\\\\frac{1}{R_1}+\\\\frac{1}{R_2}+\\\\frac{1}{R_3}",
+  "=\\\\frac{1}{4}+\\\\frac{1}{3}+\\\\frac{1}{6}",
+  "\\\\frac{1}{R_p}=\\\\frac{3}{4}",
+  "R_p=1{,}333\\\\;\\\\Omega"
+]
+
+
+The frontend will render math_lines as proper mathematical
+notation.
+
+Use proper fractions where a fraction is mathematically natural.
+
+Prefer:
+
+\\\\frac{v-u}{t}
+
+instead of:
+
+(v-u) ÷ t
+
+
+Prefer:
+
+\\\\frac{1}{R_p}
+
+instead of:
+
+1 ÷ Rp
+
+
+Prefer:
+
+\\\\frac{MA}{VR}\\\\times100\\\\%
+
+instead of:
+
+MA ÷ VR × 100%
+
+
+============================================================
+KATEX RULES
+============================================================
+
+math_lines may use ordinary KaTeX/LaTeX maths commands ONLY.
+
+Allowed examples:
+
+\\\\frac{a}{b}
+x^2
+x^3
+R_p
+T_1
+\\\\sqrt{x}
+\\\\pi
+\\\\theta
+\\\\eta
+\\\\rho
+\\\\Omega
+\\\\Delta
+\\\\Sigma
+\\\\times
+\\\\div
+\\\\sin
+\\\\cos
+\\\\text{}
+
+
+Do NOT use:
+
+\\\\begin
+\\\\end
+tables
+arrays
+HTML
+JavaScript
+external URLs
+markdown code fences
+
+
+Each math_lines entry must represent ONE display line.
 
 
 ============================================================
 FULL QUESTION WORDING
 ============================================================
 
-Every numbered item must retain the full question wording.
+Retain the full wording for every numbered examination item.
 
-The user wants a standalone answer paper.
+The answer paper must stand on its own.
 
-For example:
+Do not reduce:
 
-1.3 An object starting from rest accelerates at 12 m/s² for
-9 seconds. Calculate the displacement of the object.
+"Calculate the component of the weight perpendicular to the plane"
 
-Then show:
+to merely:
 
-s = ut + ½at²
-= 0(9) + ½(12)(9²)
-= 486 m
-
-
-Do not output only the question number.
+"6.2.1"
 
 
 ============================================================
-NUMBER FORMAT
+THREE-STEP CALCULATION RULE
 ============================================================
 
-Be extremely careful with South African decimal-comma notation.
+When the examination requires at least three steps, provide:
 
-A comma is a DECIMAL separator only when there is an actual
-decimal fraction.
+1. formula or manipulation
+2. substitution
+3. answer with correct SI unit
+
+Use an intermediate line when needed for clarity.
 
 
-CORRECT:
+============================================================
+FORMULA-SHEET FIDELITY
+============================================================
+
+Before each calculation, determine whether the supplied formula
+sheet contains the required relationship.
+
+If it does:
+
+USE THAT RELATIONSHIP.
+
+You may algebraically rearrange it.
+
+Do not replace it with an unrelated shortcut unless the question
+or official memorandum clearly permits the alternative.
+
+
+============================================================
+CRITICAL NUMERICAL CHECK
+============================================================
+
+For EVERY calculation perform an internal arithmetic check before
+returning the answer.
+
+Check:
+
+- operation signs
+- brackets
+- powers
+- square roots
+- unit conversions
+- decimal placement
+- force directions
+- whether forces add or subtract
+- formula rearrangement
+- intermediate rounding
+- final rounding
+
+Do not output the calculation until you have independently
+checked the numerical result.
+
+
+============================================================
+FORCE-DIRECTION RULE
+============================================================
+
+Always determine the physical direction of each force before
+adding or subtracting forces.
+
+Friction ALWAYS opposes the actual or impending motion.
+
+
+For a body moving or being pulled DOWN an incline:
+
+- the component of weight Fs acts DOWN the incline
+- friction Fμ acts UP the incline
+
+
+If the external pulling force down the incline is being
+calculated for equilibrium/constant motion:
+
+FT + Fs = Fμ
+
+therefore:
+
+FT = Fμ − Fs
+
+
+Example:
+
+FT = Fμ − Fs
+= 400 − 126,821
+= 273,179 N
+
+
+DO NOT add opposing forces merely because both magnitudes appear
+in the question.
+
+
+For other force situations, analyse the directions from the
+actual diagram and wording rather than blindly applying this
+example.
+
+
+============================================================
+ROUNDING POLICY
+============================================================
+
+Follow the question-paper instruction exactly.
+
+If it says:
+
+"rounded to three decimal places where applicable"
+
+then:
+
+- non-exact decimal results should generally be shown to
+  three decimal places
+- exact integer answers remain integers
+- exact terminating values need not receive meaningless zeros
+
+
+Correct:
 
 1 m/s²
 486 m
-480 N
 1 500 N
-157 500 J
-
-
-CORRECT DECIMAL VALUES:
-
+480 N
 29,167 m/s
 153,846 N
-326,154 N
-31,888 m
-2,842
-2,941
 
 
-INCORRECT:
+Incorrect:
 
 1,000 m/s²
 486,000 m
-480,000 N
 1 500,000 N
-157 500,000 J
-
-
-Never append ",000" to an exact whole number.
 
 
 ============================================================
-ROUNDING
+DEPENDENT SUBQUESTIONS
 ============================================================
 
-Follow the instructions on the question paper.
-
-If the paper specifies three decimal places where applicable:
-
-- round non-exact decimal results to three decimals
-- leave exact integer answers as integers
+When a later subquestion explicitly depends on an answer obtained
+in a previous subquestion, use the DISPLAYED examination answer
+from the previous subquestion when this is the normal marking
+convention.
 
 Example:
 
-153,846 N
+MA = 2,842
+VR = 2,941
 
-but:
+Then:
 
-486 m
+η = MA / VR × 100%
+= 2,842 / 2,941 × 100%
+= 96,634%
 
 
-============================================================
-THEORY ANSWERS
-============================================================
+Do not silently use excessive hidden precision if doing so changes
+the answer that a student would obtain using the displayed
+previous results.
 
-Answer theory questions in concise memorandum style.
 
-If an official memo is available, use an accepted answer from it.
-
-If no memo is available, give a technically correct answer at the
-level of the examination.
-
-For:
-
-Name THREE
-Give THREE
-List THREE
-
-give exactly THREE answers.
-
-Do not give eight possible answers when only three are requested.
+The same rule applies to heat, electricity and other dependent
+calculations where an earlier rounded answer is carried forward.
 
 
 ============================================================
-OR METHODS
+QUESTION 1 / DYNAMICS STYLE
 ============================================================
-
-If an official memo provides an OR method, it may be preserved.
-
-If no memo is supplied:
-
-Only provide an OR method when there are clearly two standard
-accepted examination methods and showing the alternative is
-useful.
-
-Do not clutter every calculation with alternatives.
-
-
-============================================================
-GRAPHS
-============================================================
-
-If the question says:
-
-draw
-plot
-sketch
-construct a graph
-
-then a graph block MUST exist.
-
-
-For standard XY / time graphs use:
-
-type = "graph"
-
-diagram.kind = "line_graph"
-
-
-Supply exact numerical coordinate arrays.
-
-Example:
-
-Time:
-0, 10, 20, 30, 40, 50, 60
-
-Velocity:
-10, 20, 30, 40, 40, 40, 0
-
-
-Return:
-
-x_values:
-[0,10,20,30,40,50,60]
-
-y_values:
-[10,20,30,40,40,40,0]
-
-x_label:
-Time (s)
-
-y_label:
-Velocity (m/s)
-
-
-The application will draw the graph.
-
-Do NOT attempt SVG for an ordinary line graph.
-
-
-============================================================
-SOURCE FIGURES
-============================================================
-
-If an existing question-paper figure is materially needed for
-understanding the working, recreate it.
-
-Examples:
-
-- loaded beam
-- Weston pulley
-- circuit
-- force diagram
-- mechanical system
-
-
-Use:
-
-type = "diagram"
-
-diagram.kind = "source_figure"
-
-
-The SVG must contain real graphical elements.
-
-Allowed:
-
-svg
-g
-line
-polyline
-polygon
-path
-rect
-circle
-ellipse
-text
-tspan
-defs
-marker
-
-
-Always provide a viewBox.
-
-
-Never use:
-
-script
-foreignObject
-JavaScript
-external images
-external URLs
-
-
-============================================================
-NO FAKE DIAGRAMS
-============================================================
-
-This is NOT a diagram:
-
-L R 160 N 70 N 250 N 2 m 4 m 13 m 1 m
-
-
-A diagram must have actual:
-
-lines
-arrows
-supports
-loads
-dimensions
-shapes
-labels
-
-
-If you cannot reliably recreate a non-essential figure,
-do not create a fake text figure.
-
-
-============================================================
-DYNAMICS
-============================================================
-
-Use formula-sheet notation.
 
 Acceleration:
 
 a = (v − u) / t
 
 
-Uniform acceleration:
+Displacement under uniform acceleration:
 
 s = ut + ½at²
 
@@ -690,24 +690,58 @@ Average velocity:
 v = s / t
 
 
-For displacement from a velocity-time graph:
+For a velocity-time graph:
 
-calculate the AREA UNDER THE GRAPH using accepted geometry.
+displacement = area under the graph
 
-For example:
 
-S = ½bh + lb + lb + ½bh
+Show the actual geometry used.
 
-then substitute dimensions.
+Where appropriate, accepted alternatives may be shown with an OR
+block.
+
+
+============================================================
+GRAPHS
+============================================================
+
+When the paper requests a graph:
+
+type = "graph"
+
+diagram.kind = "line_graph"
+
+
+Provide correct coordinate arrays.
+
+Example:
+
+x_values:
+[0,10,20,30,40,50,60]
+
+y_values:
+[10,20,30,40,40,40,0]
+
+
+Use suitable axis labels.
+
+Do not put the graph title twice.
+
+The server/frontend will draw the graph.
+
+The graph should resemble an examination graph, not a decorative
+chart.
 
 
 ============================================================
 STATICS
 ============================================================
 
-Use moments correctly.
+Respect force directions and moment arms.
 
-Example style:
+Use a compact marking-guideline layout.
+
+Example:
 
 Take moments about R:
 
@@ -721,65 +755,61 @@ Take moments about R:
 L = 153,846 N
 
 
-Take moments about L:
-
-Σ clockwise moments = Σ anticlockwise moments
-
-(160 × 2) + (70 × 6) + (250 × 14)
-= R × 13
-
-4 240 = 13R
-
-R = 326,154 N
+Then independently check the other support.
 
 
 ============================================================
-ENERGY
+ENERGY AND MOMENTUM
 ============================================================
 
-Use the formula-sheet energy equations where applicable.
-
-Example:
+Use supplied energy formulas where applicable:
 
 Ek = ½mv²
 
 Ep = mgh
 
 
-For conservation of energy, clearly equate the required forms.
+For conservation of energy:
+
+energy at one state = energy at another state
+
+
+Do not omit the equation that establishes the conservation
+relationship.
 
 
 ============================================================
-WORK AND POWER
+WORK, POWER AND EFFICIENCY
 ============================================================
 
 Use:
 
-W = F × s
+W = Fs
 
 P = W / t
 
 
-For a force-displacement graph:
+For work from a graph:
 
-work = area under graph
+work = area under the force-displacement graph
 
 
-Show the actual area calculation.
+Use proper rectangles, triangles or trapeziums according to the
+shape.
 
 
 ============================================================
 MECHANICAL DRIVES
 ============================================================
 
-Use supplied formula-sheet notation.
+Use supplied notation where possible.
 
 Mechanical advantage:
 
 MA = L / E
 
 
-Velocity/displacement ratio for Weston pulley:
+Weston pulley:
 
 VR = 2D / (D − d)
 
@@ -794,130 +824,228 @@ Belt velocity:
 v = πdn
 
 
-Use the exact formula-sheet relationship where available.
+Tension relationship:
+
+T₁ / T₂ = tension ratio
+
+
+Effective force:
+
+Fe = T₁ − T₂
+
+
+Power:
+
+P = Fe × v
 
 
 ============================================================
 FRICTION
 ============================================================
 
-Use formulas supplied on the paper.
+Use:
 
-Examples:
+w = mg
 
 Fc = w cos θ
 
 Fs = w sin θ
 
-μ = Fμ / Fc
+μ = Fμ / NR
+
+
+Analyse direction before calculating the final resultant or
+pulling force.
+
+Do not automatically use:
+
+FT = Fμ + Fs
+
+The correct sign depends on force direction.
 
 
 ============================================================
 HEAT
 ============================================================
 
-Use supplied heat formulas and constants.
+Use supplied constants and formulas.
 
-Examples:
+Typical relationships:
 
 Q = mcΔt
 
-Qlost = Qgained
+Q = mhv
 
 P = Q / t
 
+Qlost = Qgained
 
-Perform unit conversions carefully.
+
+Convert:
+
+1 litre = 0,001 m³
+1 kJ = 1 000 J
+1 MJ = 1 000 000 J
+
+
+When a later heat calculation uses an earlier rounded result,
+apply the dependent-subquestion rounding policy.
+
+
+============================================================
+PARTICLE STRUCTURE / THEORY
+============================================================
+
+Use concise marking-guideline wording.
+
+For:
+
+Name THREE
+Give THREE
+List THREE
+
+provide exactly THREE answers.
+
+Do not provide unnecessary additional options unless presenting a
+clearly labelled official OR alternative.
 
 
 ============================================================
 ELECTRICITY
 ============================================================
 
-Use supplied formula-sheet relationships.
+Parallel resistance should be displayed as REAL FRACTIONS.
 
-Parallel resistance:
+Preferred mathematical presentation:
 
-1 / Rp = 1 / R1 + 1 / R2 + ... + 1 / Rn
+1/Rp = 1/R1 + 1/R2 + 1/R3
+
+= 1/4 + 1/3 + 1/6
+
+1/Rp = 3/4
+
+Rp = 1,333 Ω
 
 
-Resistance of conductor:
+math_lines should render that as:
+
+\\\\frac{1}{R_p}
+=
+\\\\frac{1}{R_1}
++
+\\\\frac{1}{R_2}
++
+\\\\frac{1}{R_3}
+
+
+Where a useful accepted alternative exists, add:
+
+type = "or"
+
+followed by the alternative equation block.
+
+
+Ohm's law:
+
+V = IR
+
+I = V / R
+
+
+Conductor resistance:
 
 R = ρl / A
 
 
-Show formula, substitution and final answer.
+Show the rearranged formula where required.
 
 
 ============================================================
-MATHEMATICAL NOTATION
+OR ALTERNATIVES
 ============================================================
 
-Use normal readable Unicode.
+An OR method should be represented as its own block:
 
-Use characters such as:
-
-½
-²
-³
-√
-π
-Σ
-θ
-η
-ρ
-Ω
-Δ
-×
-÷
-↑
-↓
+type = "or"
 
 
-Do NOT output LaTeX.
+Then place the alternative equation block after it.
 
-Forbidden:
+Use OR only when:
 
-\\frac
-\\boxed
-\\begin
-\\end
-\\text
-\\mathrm
-\\left
-\\right
-\\[
-\\]
+- the source memorandum provides an accepted alternative, OR
+- two standard examination methods are both genuinely useful
+
+Do not add OR methods to every calculation merely to make the
+memo longer.
 
 
 ============================================================
-FINAL SELF-CHECK
+FIGURES AND DIAGRAMS
 ============================================================
 
-Before returning the structured memorandum, perform ONE internal
-verification of your own work.
+When an original figure is materially required:
 
-Check:
+type = "diagram"
 
-- every question is answered
-- numbering is correct
-- full question wording is retained
-- the formula sheet was actually used
-- symbolic formulas appear before substitutions
-- substitutions are correct
-- arithmetic is correct
-- units are correct
-- rounding is correct
-- exact integers remain integers
-- decimal commas are only used for real decimals
-- graphs contain correct coordinates
-- diagrams contain real shapes
-- theory questions contain the requested number of answers
-- no raw LaTeX remains
+diagram.kind = "source_figure"
 
-Correct any errors BEFORE returning the JSON.
 
-Return only the final structured memorandum.
+Create an SVG containing actual graphical objects such as:
+
+line
+polyline
+polygon
+path
+rect
+circle
+ellipse
+text
+g
+defs
+marker
+
+
+Never fake a diagram by typing labels in one line.
+
+
+============================================================
+FINAL INTERNAL QUALITY CONTROL
+============================================================
+
+Before returning the response, perform ONE complete internal
+quality check.
+
+Check every question for:
+
+1. Missing questions or subquestions
+2. Wrong values copied from the paper
+3. Wrong formulas
+4. Wrong algebra
+5. Wrong plus/minus signs
+6. Wrong force direction
+7. Wrong arithmetic
+8. Wrong units
+9. Wrong unit conversions
+10. Wrong rounding
+11. Incorrect carried-forward values
+12. Missing graphs
+13. Missing diagrams
+14. Duplicate graph titles
+15. Incorrect number of theory answers
+16. Missing formula step
+17. Missing substitution step
+18. Missing final answer
+19. Equation formatting
+20. Consistency between lines and math_lines
+
+
+DO NOT create a second API verification request.
+
+Perform this verification internally before generating the final
+structured response.
+
+Return ONLY the structured memorandum.
 `;
 
 
@@ -958,7 +1086,7 @@ function fileToInputPart(file) {
 
 
 /* =========================================================
-   EXTRACT RESPONSE
+   RESPONSE TEXT EXTRACTION
    ========================================================= */
 
 function extractOutputText(data) {
@@ -993,68 +1121,98 @@ function extractOutputText(data) {
 
 
 /* =========================================================
-   OPENAI REQUEST
+   OPENAI STRUCTURED REQUEST
    ========================================================= */
 
 async function callStructuredOpenAI({
   instructions,
   content
 }) {
-  const response =
-    await fetch(
-      "https://api.openai.com/v1/responses",
+  let response;
 
-      {
-        method: "POST",
+  try {
+    response =
+      await fetch(
+        "https://api.openai.com/v1/responses",
 
-        headers: {
-          Authorization:
-            `Bearer ${process.env.OPENAI_API_KEY}`,
+        {
+          method: "POST",
 
-          "Content-Type":
-            "application/json"
-        },
+          headers: {
+            Authorization:
+              `Bearer ${process.env.OPENAI_API_KEY}`,
 
-        body: JSON.stringify({
-          model: MODEL,
-
-          reasoning: {
-            effort: "medium"
+            "Content-Type":
+              "application/json"
           },
 
-          instructions,
+          body: JSON.stringify({
+            model: MODEL,
 
-          input: [
-            {
-              role: "user",
-              content
+            reasoning: {
+              effort: "medium"
+            },
+
+            instructions,
+
+            input: [
+              {
+                role: "user",
+                content
+              }
+            ],
+
+            text: {
+              format: {
+                type: "json_schema",
+
+                name:
+                  "testsolver_memorandum",
+
+                strict: true,
+
+                schema:
+                  MEMO_SCHEMA
+              }
             }
-          ],
+          }),
 
-          text: {
-            format: {
-              type: "json_schema",
+          signal:
+            AbortSignal.timeout(
+              285000
+            )
+        }
+      );
 
-              name:
-                "testsolver_memorandum",
+  } catch (error) {
 
-              strict: true,
+    if (
+      error?.name === "TimeoutError" ||
+      error?.name === "AbortError" ||
+      String(error?.cause?.code || "")
+        .includes("TIMEOUT")
+    ) {
+      throw new Error(
+        "The AI took too long to process this paper. Please retry the request."
+      );
+    }
 
-              schema:
-                MEMO_SCHEMA
-            }
-          }
-        })
-      }
-    );
+    throw error;
+  }
+
 
   const data =
     await response.json();
 
+
   if (!response.ok) {
     console.error(
       "OpenAI API error:",
-      JSON.stringify(data, null, 2)
+      JSON.stringify(
+        data,
+        null,
+        2
+      )
     );
 
     throw new Error(
@@ -1063,8 +1221,10 @@ async function callStructuredOpenAI({
     );
   }
 
+
   const text =
     extractOutputText(data);
+
 
   if (!text.trim()) {
     throw new Error(
@@ -1072,24 +1232,26 @@ async function callStructuredOpenAI({
     );
   }
 
+
   try {
     return JSON.parse(text);
 
   } catch (error) {
+
     console.error(
-      "JSON parse error:",
-      text.slice(0, 1500)
+      "Structured JSON parse error:",
+      text.slice(0, 2000)
     );
 
     throw new Error(
-      "The AI returned invalid structured data."
+      "The AI returned invalid structured memorandum data."
     );
   }
 }
 
 
 /* =========================================================
-   ESCAPE SVG TEXT
+   XML / SVG ESCAPING
    ========================================================= */
 
 function esc(value) {
@@ -1103,7 +1265,7 @@ function esc(value) {
 
 
 /* =========================================================
-   SERVER GRAPH CREATOR
+   EXAM-STYLE LINE GRAPH
    ========================================================= */
 
 function createLineGraph(diagram) {
@@ -1117,6 +1279,7 @@ function createLineGraph(diagram) {
       ? diagram.y_values
       : [];
 
+
   if (
     xs.length < 2 ||
     xs.length !== ys.length
@@ -1124,19 +1287,21 @@ function createLineGraph(diagram) {
     return "";
   }
 
-  const width = 720;
-  const height = 440;
 
-  const left = 90;
+  const width = 720;
+  const height = 430;
+
+  const left = 85;
   const right = 40;
-  const top = 55;
-  const bottom = 80;
+  const top = 35;
+  const bottom = 75;
 
   const plotW =
     width - left - right;
 
   const plotH =
     height - top - bottom;
+
 
   const minX =
     Math.min(...xs, 0);
@@ -1150,11 +1315,13 @@ function createLineGraph(diagram) {
   const maxY =
     Math.max(...ys, 1);
 
+
   const xRange =
     maxX - minX || 1;
 
   const yRange =
     maxY - minY || 1;
+
 
   const px = x =>
     left +
@@ -1167,6 +1334,7 @@ function createLineGraph(diagram) {
     ((y - minY) / yRange) *
       plotH;
 
+
   const points =
     xs
       .map(
@@ -1177,11 +1345,13 @@ function createLineGraph(diagram) {
       )
       .join(" ");
 
+
   const uniqueX =
     [...new Set(xs)]
       .sort(
         (a, b) => a - b
       );
+
 
   const uniqueY =
     [...new Set([0, ...ys])]
@@ -1189,17 +1359,18 @@ function createLineGraph(diagram) {
         (a, b) => a - b
       );
 
+
   const xTicks =
     uniqueX
       .map(
         x => `
         <line
           x1="${px(x)}"
-          y1="${top}"
+          y1="${top + plotH}"
           x2="${px(x)}"
-          y2="${top + plotH}"
-          stroke="#dddddd"
-          stroke-width="1"
+          y2="${top + plotH + 7}"
+          stroke="black"
+          stroke-width="1.4"
         />
 
         <text
@@ -1212,21 +1383,22 @@ function createLineGraph(diagram) {
       )
       .join("");
 
+
   const yTicks =
     uniqueY
       .map(
         y => `
         <line
-          x1="${left}"
+          x1="${left - 7}"
           y1="${py(y)}"
-          x2="${left + plotW}"
+          x2="${left}"
           y2="${py(y)}"
-          stroke="#dddddd"
-          stroke-width="1"
+          stroke="black"
+          stroke-width="1.4"
         />
 
         <text
-          x="${left - 15}"
+          x="${left - 14}"
           y="${py(y) + 5}"
           text-anchor="end"
           font-size="15"
@@ -1235,6 +1407,7 @@ function createLineGraph(diagram) {
       )
       .join("");
 
+
   const pointDots =
     xs
       .map(
@@ -1242,29 +1415,19 @@ function createLineGraph(diagram) {
         <circle
           cx="${px(x)}"
           cy="${py(ys[i])}"
-          r="4"
+          r="3"
           fill="black"
         />
       `
       )
       .join("");
 
+
   return `
 <svg
   viewBox="0 0 ${width} ${height}"
   xmlns="http://www.w3.org/2000/svg"
 >
-  <text
-    x="${width / 2}"
-    y="28"
-    text-anchor="middle"
-    font-size="21"
-    font-weight="700"
-  >${esc(diagram.title || "Graph")}</text>
-
-  ${xTicks}
-  ${yTicks}
-
   <line
     x1="${left}"
     y1="${top}"
@@ -1283,11 +1446,15 @@ function createLineGraph(diagram) {
     stroke-width="2"
   />
 
+  ${xTicks}
+
+  ${yTicks}
+
   <polyline
     points="${points}"
     fill="none"
     stroke="black"
-    stroke-width="4"
+    stroke-width="2.5"
     stroke-linejoin="round"
     stroke-linecap="round"
   />
@@ -1299,33 +1466,46 @@ function createLineGraph(diagram) {
     y="${height - 18}"
     text-anchor="middle"
     font-size="17"
-    font-weight="700"
-  >${esc(diagram.x_label || "x")}</text>
+  >${esc(
+    diagram.x_label ||
+    "x"
+  )}</text>
 
   <text
-    x="24"
+    x="22"
     y="${top + plotH / 2}"
     text-anchor="middle"
     font-size="17"
-    font-weight="700"
-    transform="rotate(-90 24 ${
+    transform="rotate(-90 22 ${
       top + plotH / 2
     })"
-  >${esc(diagram.y_label || "y")}</text>
+  >${esc(
+    diagram.y_label ||
+    "y"
+  )}</text>
 </svg>
 `;
 }
 
 
 /* =========================================================
-   CLEAN EQUATION
+   CLEAN FALLBACK EQUATION
    ========================================================= */
 
 function cleanEquation(line) {
   return String(line ?? "")
-    .replace(/\\boxed\s*\{([^{}]*)\}/g, "$1")
-    .replace(/\\text\s*\{([^{}]*)\}/g, "$1")
-    .replace(/\\mathrm\s*\{([^{}]*)\}/g, "$1")
+    .replace(
+      /\\boxed\s*\{([^{}]*)\}/g,
+      "$1"
+    )
+    .replace(
+      /\\text\s*\{([^{}]*)\}/g,
+      "$1"
+    )
+    .replace(
+      /\\mathrm\s*\{([^{}]*)\}/g,
+      "$1"
+    )
     .replace(/\\cdot/g, "·")
     .replace(/\\times/g, "×")
     .replace(/\\div/g, "÷")
@@ -1335,24 +1515,20 @@ function cleanEquation(line) {
     .replace(/\\rho/g, "ρ")
     .replace(/\\Omega/g, "Ω")
     .replace(/\\Delta/g, "Δ")
-    .replace(/\\uparrow/g, "↑")
-    .replace(/\\downarrow/g, "↓")
+    .replace(/\\Sigma/g, "Σ")
     .replace(/\\,/g, " ")
     .replace(/\\\\/g, "")
-    .replace(/\\begin\{[^}]+\}/g, "")
-    .replace(/\\end\{[^}]+\}/g, "")
-    .replace(/\\\[/g, "")
-    .replace(/\\\]/g, "")
     .trim();
 }
 
 
 /* =========================================================
-   FALLBACK MEMO CONVERTER
+   FALLBACK TEXT MEMORANDUM
    ========================================================= */
 
 function structureToMemo(memo) {
   const out = [];
+
 
   if (memo.title) {
     out.push(
@@ -1360,20 +1536,27 @@ function structureToMemo(memo) {
     );
   }
 
+
   if (memo.subtitle) {
     out.push(
       memo.subtitle
     );
   }
 
+
   out.push("");
+
 
   for (
     const section
     of memo.questions || []
   ) {
+
     const heading =
-      String(section.heading || "");
+      String(
+        section.heading || ""
+      );
+
 
     out.push(
       /^QUESTION/i.test(heading)
@@ -1381,12 +1564,15 @@ function structureToMemo(memo) {
         : `QUESTION ${heading}`
     );
 
+
     out.push("");
+
 
     for (
       const item
       of section.items || []
     ) {
+
       out.push(
         [
           item.number,
@@ -1396,15 +1582,19 @@ function structureToMemo(memo) {
           .join(" ")
       );
 
+
       out.push("");
+
 
       for (
         const block
         of item.blocks || []
       ) {
+
         if (
           block.type === "text"
         ) {
+
           if (block.text) {
             out.push(
               cleanEquation(
@@ -1418,9 +1608,11 @@ function structureToMemo(memo) {
           continue;
         }
 
+
         if (
           block.type === "equation"
         ) {
+
           for (
             const line
             of block.lines || []
@@ -1435,9 +1627,11 @@ function structureToMemo(memo) {
           continue;
         }
 
+
         if (
           block.type === "list"
         ) {
+
           for (
             const entry
             of block.items || []
@@ -1454,6 +1648,7 @@ function structureToMemo(memo) {
           continue;
         }
 
+
         if (
           block.type === "or"
         ) {
@@ -1463,9 +1658,11 @@ function structureToMemo(memo) {
           continue;
         }
 
+
         if (
           block.type === "graph"
         ) {
+
           const svg =
             createLineGraph(
               block.diagram
@@ -1479,14 +1676,17 @@ function structureToMemo(memo) {
           continue;
         }
 
+
         if (
           block.type === "diagram"
         ) {
+
           const svg =
             String(
               block?.diagram?.svg ||
               ""
             ).trim();
+
 
           if (
             svg.startsWith("<svg") &&
@@ -1502,7 +1702,81 @@ function structureToMemo(memo) {
     }
   }
 
+
   return out.join("\n");
+}
+
+
+/* =========================================================
+   BASIC RESULT NORMALISATION
+   ========================================================= */
+
+function normaliseMemo(memo) {
+
+  if (!memo || typeof memo !== "object") {
+    return memo;
+  }
+
+
+  for (
+    const question
+    of memo.questions || []
+  ) {
+
+    for (
+      const item
+      of question.items || []
+    ) {
+
+      for (
+        const block
+        of item.blocks || []
+      ) {
+
+        if (
+          !Array.isArray(
+            block.math_lines
+          )
+        ) {
+          block.math_lines = [];
+        }
+
+
+        if (
+          !Array.isArray(
+            block.lines
+          )
+        ) {
+          block.lines = [];
+        }
+
+
+        if (
+          !Array.isArray(
+            block.items
+          )
+        ) {
+          block.items = [];
+        }
+
+
+        if (!block.diagram) {
+          block.diagram = {
+            kind: "none",
+            title: "",
+            x_label: "",
+            y_label: "",
+            x_values: [],
+            y_values: [],
+            svg: ""
+          };
+        }
+      }
+    }
+  }
+
+
+  return memo;
 }
 
 
@@ -1517,19 +1791,19 @@ app.get(
     res.json({
       ok: true,
 
-      version: "6.2",
+      version: "6.3",
 
       model: MODEL,
 
       mode:
-        "single-pass-structured-memo"
+        "single-pass-exam-memo-math"
     });
   }
 );
 
 
 /* =========================================================
-   SOLVE
+   SOLVE ROUTE
    ========================================================= */
 
 app.post(
@@ -1541,12 +1815,14 @@ app.post(
   ),
 
   async (req, res) => {
+
     try {
 
       if (
         !process.env
           .OPENAI_API_KEY
       ) {
+
         return res
           .status(500)
           .json({
@@ -1560,6 +1836,7 @@ app.post(
         !req.files ||
         req.files.length === 0
       ) {
+
         return res
           .status(400)
           .json({
@@ -1570,7 +1847,7 @@ app.post(
 
 
       console.log(
-        `V6.2 solving ${req.files.length} file(s)`
+        `V6.3 processing ${req.files.length} uploaded file(s)`
       );
 
 
@@ -1582,6 +1859,7 @@ app.post(
 
       const memorandum =
         await callStructuredOpenAI({
+
           instructions:
             SOLVER_PROMPT,
 
@@ -1591,15 +1869,26 @@ app.post(
                 "input_text",
 
               text:
-                "Read every uploaded page before answering. " +
-                "Generate the complete worked memorandum yourself. " +
+                "Read every page before answering. " +
+
+                "Generate the complete examination memorandum yourself. " +
+
                 "An official memorandum is NOT required. " +
-                "Use the supplied formula sheet as the primary formula source. " +
-                "Show symbolic formula, substitution and answer with SI unit. " +
-                "Use compact examination memorandum style. " +
-                "If an official memo happens to be uploaded, use it as the " +
-                "strongest reference. Perform your own final accuracy check " +
-                "before returning the structured memorandum."
+
+                "Use the question paper, formula sheet, supplied constants, " +
+                "figures and examination instructions. " +
+
+                "For every calculation verify the formula, sign, arithmetic, " +
+                "units and rounding before returning it. " +
+
+                "For dependent subquestions use the displayed rounded previous " +
+                "answer when that is the normal examination convention. " +
+
+                "Return both readable equation lines and equivalent math_lines " +
+                "for professional mathematical rendering. " +
+
+                "Perform one internal quality-control pass before returning " +
+                "the final structured memorandum."
             },
 
             ...sourceParts
@@ -1607,14 +1896,20 @@ app.post(
         });
 
 
-      const answer =
-        structureToMemo(
+      const finalMemo =
+        normaliseMemo(
           memorandum
         );
 
 
+      const answer =
+        structureToMemo(
+          finalMemo
+        );
+
+
       console.log(
-        "V6.2 memorandum completed successfully"
+        "V6.3 memorandum completed successfully"
       );
 
 
@@ -1622,7 +1917,7 @@ app.post(
         answer,
 
         structured:
-          memorandum,
+          finalMemo,
 
         model:
           MODEL,
@@ -1630,18 +1925,21 @@ app.post(
         verified:
           true,
 
+        verification_mode:
+          "single-pass-internal",
+
         version:
-          "6.2",
+          "6.3",
 
         mode:
-          "single-pass-structured-memo"
+          "single-pass-exam-memo-math"
       });
 
 
     } catch (error) {
 
       console.error(
-        "TestSolverAI V6.2 error:",
+        "TestSolverAI V6.3 error:",
         error
       );
 
@@ -1652,14 +1950,18 @@ app.post(
 
 
       if (
-        message.includes(
-          "UND_ERR_HEADERS_TIMEOUT"
-        ) ||
-        message.toLowerCase()
+        String(message)
+          .includes(
+            "UND_ERR_HEADERS_TIMEOUT"
+          ) ||
+
+        String(message)
+          .toLowerCase()
           .includes(
             "headers timeout"
           )
       ) {
+
         message =
           "The AI took too long to process the complete paper. Please try again.";
       }
@@ -1668,7 +1970,8 @@ app.post(
       return res
         .status(500)
         .json({
-          error: message
+          error:
+            message
         });
     }
   }
@@ -1683,8 +1986,9 @@ app.listen(
   PORT,
 
   () => {
+
     console.log(
-      `TestSolverAI Version 6.2 running on port ${PORT}`
+      `TestSolverAI Version 6.3 running on port ${PORT}`
     );
 
     console.log(
@@ -1692,7 +1996,7 @@ app.listen(
     );
 
     console.log(
-      "Mode: Single-pass structured memorandum"
+      "Mode: Single-pass accurate exam memorandum with math rendering data"
     );
   }
 );
