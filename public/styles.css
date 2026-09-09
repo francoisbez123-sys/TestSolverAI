@@ -1,9 +1,564 @@
+:root {
+  --bg: #f3f4f6;
+  --card: #ffffff;
+  --ink: #111827;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  --accent: #111827;
+  --accent2: #2563eb;
+  --ok: #166534;
+  --danger: #b91c1c;
+  --radius: 22px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.app-shell {
+  width: min(980px, 100%);
+  margin: 0 auto;
+  padding:
+    max(18px, env(safe-area-inset-top))
+    16px
+    max(36px, env(safe-area-inset-bottom));
+}
+
+/* -------------------------------------------------------
+   APP HEADER
+------------------------------------------------------- */
+
+.hero {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 16px 2px 20px;
+}
+
+.logo {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: white;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
+.hero h1 {
+  font-size: clamp(1.55rem, 5vw, 2.2rem);
+}
+
+.hero p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+/* -------------------------------------------------------
+   CARDS
+------------------------------------------------------- */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: 0 10px 35px rgba(17, 24, 39, 0.06);
+  margin-bottom: 16px;
+}
+
+/* -------------------------------------------------------
+   BUTTONS
+------------------------------------------------------- */
+
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.actions.two {
+  margin-top: 0;
+}
+
+.actions.compact {
+  margin: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.btn {
+  border: 0;
+  border-radius: 15px;
+  padding: 14px 16px;
+  font-weight: 800;
+  cursor: pointer;
+  min-height: 50px;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.primary {
+  background: var(--accent);
+  color: white;
+  flex: 1;
+}
+
+.secondary {
+  background: #e5e7eb;
+  color: var(--ink);
+  flex: 1;
+}
+
+.solve {
+  background: var(--accent2);
+  color: white;
+  flex: 1;
+}
+
+.ghost {
+  background: #f3f4f6;
+  color: var(--ink);
+}
+
+/* -------------------------------------------------------
+   FILE AREA
+------------------------------------------------------- */
+
+.file-area {
+  border: 2px dashed #d1d5db;
+  border-radius: 17px;
+  padding: 14px;
+  margin-top: 14px;
+  color: var(--muted);
+}
+
+.file-area.empty {
+  text-align: center;
+  padding: 22px 14px;
+}
+
+.file-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.file-row:last-child {
+  border-bottom: 0;
+}
+
+.file-name {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.file-size {
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* -------------------------------------------------------
+   PROCESSING STATUS
+------------------------------------------------------- */
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.status p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 4px solid #e5e7eb;
+  border-top-color: var(--accent2);
+  animation: spin 1s linear infinite;
+  flex: 0 0 auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* -------------------------------------------------------
+   RESULT HEADER
+------------------------------------------------------- */
+
+.result {
+  padding: 22px;
+}
+
+.result-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 14px;
+  margin-bottom: 10px;
+}
+
+.eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  font-weight: 900;
+  color: var(--accent2);
+  margin-bottom: 4px;
+}
+
+/* -------------------------------------------------------
+   MEMORANDUM BODY
+------------------------------------------------------- */
+
+.answer {
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  padding-top: 4px;
+  font-size: 1rem;
+}
+
+.memo-space {
+  height: 12px;
+}
+
+/* Main Question */
+
+.memo-question {
+  margin-top: 28px;
+  margin-bottom: 14px;
+  padding: 11px 14px;
+  border-left: 6px solid var(--ink);
+  background: #f3f4f6;
+  font-size: 1.22rem;
+  font-weight: 900;
+}
+
+/* Sub-question */
+
+.memo-subquestion {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+}
+
+/* Normal text */
+
+.memo-text {
+  margin: 5px 0;
+}
+
+/* GIVEN / FORMULA / WORKING / ANSWER */
+
+.memo-label {
+  margin-top: 15px;
+  margin-bottom: 6px;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #374151;
+}
+
+/* Equations */
+
+.memo-equation {
+  font-family:
+    "Segoe UI",
+    Arial,
+    sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 7px 0;
+  padding-left: 12px;
+  line-height: 1.55;
+}
+
+/* Final Answer */
+
+.memo-final-label {
+  color: var(--ok);
+  margin-top: 18px;
+}
+
+.memo-final-label + .memo-text,
+.memo-final-label + .memo-equation {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 10px 14px;
+  border: 2px solid var(--ok);
+  border-radius: 10px;
+  background: #f0fdf4;
+  font-weight: 900;
+  font-size: 1.08rem;
+}
+
+/* OR */
+
+.memo-or {
+  margin: 12px 0;
+  font-weight: 900;
+  text-align: center;
+}
+
+/* Total */
+
+.memo-total {
+  margin-top: 28px;
+  border-top: 2px solid var(--ink);
+  padding-top: 12px;
+  font-weight: 900;
+  font-size: 1.05rem;
+}
+
+/* -------------------------------------------------------
+   GRAPH / DIAGRAM
+------------------------------------------------------- */
+
+.memo-diagram {
+  margin: 22px 0;
+  padding: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 14px;
+  background: white;
+  overflow-x: auto;
+}
+
+.memo-diagram-title {
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+  color: #374151;
+}
+
+.memo-diagram svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.memo-diagram-error {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: var(--danger);
+}
+
+/* -------------------------------------------------------
+   ERRORS
+------------------------------------------------------- */
+
+.error {
+  color: var(--danger);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  padding: 12px;
+  margin-top: 14px;
+}
+
+/* -------------------------------------------------------
+   FOOTER
+------------------------------------------------------- */
+
+.footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 18px 0 0;
+}
+
+/* -------------------------------------------------------
+   MOBILE
+------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .app-shell {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .actions.two,
+  .result-head {
+    flex-direction: column;
+  }
+
+  .actions.two .btn,
+  .result-head .actions {
+    width: 100%;
+  }
+
+  .actions.compact {
+    justify-content: stretch;
+  }
+
+  .actions.compact .btn {
+    flex: 1;
+  }
+
+  .card {
+    padding: 14px;
+  }
+
+  .result {
+    padding: 15px;
+  }
+
+  .answer {
+    font-size: 0.96rem;
+  }
+
+  .memo-question {
+    font-size: 1.08rem;
+  }
+
+  .memo-subquestion {
+    font-size: 1rem;
+  }
+
+  .memo-equation {
+    font-size: 1rem;
+    padding-left: 8px;
+  }
+}
+
+/* -------------------------------------------------------
+   PRINT / SAVE PDF
+------------------------------------------------------- */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  .hero,
+  .card:not(.result),
+  .footer,
+  .result-head .actions {
+    display: none !important;
+  }
+
+  .app-shell {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .result {
+    display: block !important;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .result-head {
+    margin-bottom: 12px;
+    border-bottom: 2px solid black;
+  }
+
+  .answer {
+    font-size: 10.5pt;
+    line-height: 1.45;
+  }
+
+  .memo-question {
+    break-after: avoid;
+    page-break-after: avoid;
+    background: #f3f4f6 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .memo-subquestion,
+  .memo-label {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .memo-equation {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .memo-diagram {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    max-width: 100%;
+  }
+
+  .memo-final-label + .memo-text,
+  .memo-final-label + .memo-equation {
+    border: 2px solid black;
+    background: white;
+  }
+
 /* =========================================================
    TEST SOLVER AI VERSION 6
    STRUCTURED MEMORANDUM STYLING
    ========================================================= */
-
-/* DOCUMENT HEADING */
 
 .memo-document-title {
   text-align: center;
@@ -19,11 +574,6 @@
   color: #4b5563;
   margin-bottom: 28px;
 }
-
-
-/* =========================================================
-   QUESTION SECTIONS
-   ========================================================= */
 
 .memo-item {
   margin-bottom: 26px;
@@ -50,20 +600,10 @@
   line-height: 1.5;
 }
 
-
-/* =========================================================
-   NORMAL ANSWERS
-   ========================================================= */
-
 .memo-text {
   margin: 6px 0;
   line-height: 1.55;
 }
-
-
-/* =========================================================
-   EQUATION GROUPS
-   ========================================================= */
 
 .memo-equation-group {
   margin: 12px 0 18px 18px;
@@ -75,28 +615,17 @@
 .memo-equation {
   margin: 3px 0;
   padding: 0;
-  font-family:
-    "Segoe UI",
-    Arial,
-    sans-serif;
+  font-family: "Segoe UI", Arial, sans-serif;
   font-size: 1.04rem;
   font-weight: 600;
   line-height: 1.55;
   white-space: pre-wrap;
 }
 
-
-/* Make the final calculation line stand out slightly */
-
 .memo-equation:last-child {
   font-weight: 900;
   margin-top: 5px;
 }
-
-
-/* =========================================================
-   LIST ANSWERS
-   ========================================================= */
 
 .memo-list {
   margin: 8px 0 18px 22px;
@@ -108,22 +637,12 @@
   line-height: 1.45;
 }
 
-
-/* =========================================================
-   OR
-   ========================================================= */
-
 .memo-or {
   text-align: center;
   font-weight: 900;
   margin: 20px 0;
   letter-spacing: 0.08em;
 }
-
-
-/* =========================================================
-   GRAPHS AND DIAGRAMS
-   ========================================================= */
 
 .memo-diagram {
   margin: 20px auto 26px;
@@ -162,13 +681,7 @@
   text-align: center;
 }
 
-
-/* =========================================================
-   PHONE
-   ========================================================= */
-
 @media (max-width: 640px) {
-
   .memo-document-title {
     font-size: 1.2rem;
   }
@@ -198,13 +711,7 @@
   }
 }
 
-
-/* =========================================================
-   PRINT / SAVE AS PDF
-   ========================================================= */
-
 @media print {
-
   .memo-document-title {
     font-size: 16pt;
     color: black;
@@ -235,9 +742,14 @@
     page-break-inside: auto;
   }
 
-  .memo-equation-group {
+  .memo-equation-group,
+  .memo-list,
+  .memo-diagram {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .memo-equation-group {
     border-left: 1px solid #777;
   }
 
@@ -246,18 +758,11 @@
     color: black;
   }
 
-  .memo-list {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
   .memo-diagram {
     border: 1px solid #777;
     border-radius: 0;
     padding: 8px;
     max-width: 100%;
-    break-inside: avoid;
-    page-break-inside: avoid;
   }
 
   .memo-diagram svg {
