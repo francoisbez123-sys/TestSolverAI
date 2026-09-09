@@ -9,110 +9,275 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const MODEL =
+  process.env.OPENAI_MODEL ||
+  "gpt-5.6-sol";
+
 const upload = multer({
   storage: multer.memoryStorage(),
+
   limits: {
     fileSize: 30 * 1024 * 1024,
     files: 20
   }
 });
 
-app.use(express.static(path.join(__dirname, "public")));
-
-const MODEL = process.env.OPENAI_MODEL || "gpt-5.6-sol";
+app.use(
+  express.static(
+    path.join(__dirname, "public")
+  )
+);
 
 /* =========================================================
-   TEST SOLVER AI - VERSION 5
-   OFFICIAL MEMORANDUM STYLE
+   TEST SOLVER AI VERSION 6
+   STRUCTURED MEMORANDUM ENGINE
+   ========================================================= */
+
+
+/* =========================================================
+   OUTPUT SCHEMA
+   ========================================================= */
+
+const MEMO_SCHEMA = {
+  type: "object",
+
+  additionalProperties: false,
+
+  required: [
+    "title",
+    "subtitle",
+    "questions"
+  ],
+
+  properties: {
+    title: {
+      type: "string"
+    },
+
+    subtitle: {
+      type: "string"
+    },
+
+    questions: {
+      type: "array",
+
+      items: {
+        type: "object",
+
+        additionalProperties: false,
+
+        required: [
+          "heading",
+          "items"
+        ],
+
+        properties: {
+          heading: {
+            type: "string"
+          },
+
+          items: {
+            type: "array",
+
+            items: {
+              type: "object",
+
+              additionalProperties: false,
+
+              required: [
+                "number",
+                "question_text",
+                "blocks"
+              ],
+
+              properties: {
+                number: {
+                  type: "string"
+                },
+
+                question_text: {
+                  type: "string"
+                },
+
+                blocks: {
+                  type: "array",
+
+                  items: {
+                    type: "object",
+
+                    additionalProperties: false,
+
+                    required: [
+                      "type",
+                      "text",
+                      "lines",
+                      "items",
+                      "diagram"
+                    ],
+
+                    properties: {
+                      type: {
+                        type: "string",
+
+                        enum: [
+                          "text",
+                          "equation",
+                          "list",
+                          "or",
+                          "graph",
+                          "diagram"
+                        ]
+                      },
+
+                      text: {
+                        type: "string"
+                      },
+
+                      lines: {
+                        type: "array",
+
+                        items: {
+                          type: "string"
+                        }
+                      },
+
+                      items: {
+                        type: "array",
+
+                        items: {
+                          type: "string"
+                        }
+                      },
+
+                      diagram: {
+                        type: "object",
+
+                        additionalProperties: false,
+
+                        required: [
+                          "kind",
+                          "title",
+                          "x_label",
+                          "y_label",
+                          "x_values",
+                          "y_values",
+                          "svg"
+                        ],
+
+                        properties: {
+                          kind: {
+                            type: "string",
+
+                            enum: [
+                              "none",
+                              "line_graph",
+                              "source_figure",
+                              "technical"
+                            ]
+                          },
+
+                          title: {
+                            type: "string"
+                          },
+
+                          x_label: {
+                            type: "string"
+                          },
+
+                          y_label: {
+                            type: "string"
+                          },
+
+                          x_values: {
+                            type: "array",
+
+                            items: {
+                              type: "number"
+                            }
+                          },
+
+                          y_values: {
+                            type: "array",
+
+                            items: {
+                              type: "number"
+                            }
+                          },
+
+                          svg: {
+                            type: "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
+
+/* =========================================================
+   SOLVER PROMPT
    ========================================================= */
 
 const SOLVER_PROMPT = `
-You are TestSolverAI Version 5.
+You are TestSolverAI Version 6.
 
-Your sole purpose is to convert uploaded question papers into
-COMPLETE PROFESSIONAL MEMORANDA / MARKING-GUIDELINE STYLE
-ANSWER PAPERS.
+Your only task is to convert uploaded examination question
+papers into a complete, professional memorandum.
 
-The final result must resemble the style, compactness and
-working method of an official examination memorandum.
+Your output is STRUCTURED DATA.
 
-You are NOT a tutor.
-
-Do not explain concepts conversationally.
-Do not give study advice.
-Do not add unnecessary explanatory headings.
-Do not pad the memorandum with teaching commentary.
+Do not output markdown.
+Do not output LaTeX.
+Do not output prose outside the required structure.
 
 ============================================================
-A. FIRST IDENTIFY ALL UPLOADED DOCUMENT TYPES
+SOURCE PRIORITY
 ============================================================
 
-Before solving anything, inspect ALL uploaded files and pages.
+Inspect ALL uploaded files.
 
-Determine which uploaded documents are:
+Identify:
 
-1. QUESTION PAPER
-2. FORMULA SHEET / DATA SHEET
-3. OFFICIAL MEMORANDUM / MARKING GUIDELINE
-4. OTHER REFERENCE MATERIAL
+1. Question paper
+2. Formula/data sheet
+3. Official memorandum if supplied
+4. Other reference material
 
-A single PDF may contain both the question paper and formula
-sheet.
+Use:
 
-Use this priority hierarchy:
+Question paper:
+authoritative question wording
 
-HIGHEST PRIORITY FOR ANSWERS:
-Official memorandum / marking guideline supplied by user
+Formula/data sheet:
+authoritative formulas, constants and units
 
-HIGHEST PRIORITY FOR FORMULAS AND CONSTANTS:
-Formula sheet, data sheet and instructions supplied with the
-question paper
-
-HIGHEST PRIORITY FOR QUESTION WORDING:
-Original question paper
-
-If an official memorandum is uploaded with the question
-paper, use it as the main answer and presentation reference.
-
-Do not invent differences from an official supplied memo.
+Official memorandum:
+authoritative answer method, terminology and memo style
 
 ============================================================
-B. FULL QUESTION WORDING MUST BE INCLUDED
+QUESTION WORDING
 ============================================================
 
-The final memorandum must be usable WITHOUT needing to open
-the original question paper.
+Every question and sub-question must contain the original
+question wording.
 
-For every question:
-
-- preserve the original question number
-- reproduce the question wording
-- preserve important supplied data
-- preserve tables when needed
-- reproduce important figures where needed
-- then provide the memorandum answer
-
-Example:
-
-QUESTION 1: DYNAMICS
-
-1.1 Define the term displacement.
-
-Displacement is the shortest straight-line route from the
-starting point to the end point.
-
-Do NOT output merely:
-
-1.1
-Displacement is...
+Never return only a question number.
 
 ============================================================
-C. OFFICIAL MEMORANDUM STYLE
+OFFICIAL MEMO STYLE
 ============================================================
 
-The solution style must be COMPACT.
+Use compact vertical memorandum working.
 
-Do NOT automatically insert these headings:
+Do NOT produce teaching headings such as:
 
 GIVEN
 FORMULA
@@ -121,491 +286,31 @@ SUBSTITUTION
 WORKING
 FINAL ANSWER
 
-unless an uploaded official memo itself uses them.
+unless the source memorandum genuinely requires them.
 
-Instead, calculations should normally look like this:
+For a calculation use an equation block.
 
-1.2.2 The acceleration of the car during the first 30 seconds.
-
-a = (v − u) / t
-
-  = (40 − 10) / 30
-
-  = 1 m/s²
-
-This is the preferred style.
-
-Another example:
-
-Take moments about R:
-
-Σ↻M = Σ↺M
-
-(L × 13) + (250 × 1)
-= (70 × 7) + (160 × 11)
-
-13L = 2 000
-
-L = 153,846 N
-
-Take moments about L:
-
-Σ↻M = Σ↺M
-
-(160 × 2) + (70 × 6) + (250 × 14)
-= R × 13
-
-4 240 = 13R
-
-R = 326,154 N
-
-Do not turn simple memorandum calculations into tutorials.
-
-============================================================
-D. USE THE FORMULA SHEET CORRECTLY
-============================================================
-
-Inspect the supplied formula sheet before calculating.
-
-If a formula is present on the formula sheet, use that
-relationship as the basis of the solution.
-
-However, the final memorandum does NOT need to display the
-words:
-
-FORMULA FROM FORMULA SHEET
-
-Instead, simply show the mathematical working naturally,
-similar to an official marking guideline.
-
-Example:
-
-Formula sheet contains:
-
-v = u + at
-
-If acceleration is required, the memorandum may show:
+Example lines:
 
 a = (v − u) / t
+= (40 − 10) / 30
+= 1 m/s²
 
-  = (40 − 10) / 30
+Each equation line must be a normal readable Unicode string.
 
-  = 1 m/s²
-
-This is acceptable because it is the correct manipulation of
-the supplied relationship.
-
-NEVER use a formula inconsistent with the supplied formula
-sheet.
-
-Where no applicable formula is supplied, use an appropriate
-formula permitted by the question paper.
-
-============================================================
-E. QUESTION-PAPER INSTRUCTIONS OVERRIDE DEFAULTS
-============================================================
-
-Read the instruction page carefully.
-
-Obey requirements including:
-
-- prescribed constants
-- gravitational acceleration
-- atmospheric pressure
-- densities
-- heat capacities
-- resistivities
-- expansion coefficients
-- SI units
-- required number of calculation steps
-- required decimal places
-- drawing requirements
-
-If the paper says answers should be rounded to THREE decimal
-places where applicable, follow that instruction.
-
-Do not convert exact whole-number answers into misleading
-values such as:
-
-486,000 m
-
-when the natural memo answer is:
-
-486 m
-
-Use decimal places only where applicable.
-
-============================================================
-F. MATCH OFFICIAL ANSWER STYLE
-============================================================
-
-If an official memorandum is supplied, imitate its STYLE.
-
-This includes things such as:
-
-- compact vertical equations
-- short direct definitions
-- bullet answers for "Name THREE"
-- accepted alternatives separated by OR
-- correct standard terminology
-- moment calculations headed "Take moments about..."
-- force equilibrium shown using sums of forces
-- heat problems using Qlost = Qgained
-- graphical area methods where appropriate
-- correct SI units
-- appropriate rounding
-
-If the official memorandum contains more than one accepted
-solution method, it is acceptable to show:
-
-OR
-
-between valid alternative methods.
-
-Do NOT invent an OR method simply to make the answer longer.
-
-============================================================
-G. THEORY QUESTIONS
-============================================================
-
-Theory answers should resemble marking-guideline answers.
-
-Example:
-
-5.1 Give THREE advantages of gear drives.
-
-• No slip / Positive drive
-• Exact speed ratio
-• Transfers mechanical power directly
-
-Only give the requested number unless showing accepted
-alternatives is useful.
-
-For definitions, use concise examination-style wording.
-
-Do not write paragraphs when one marking-guideline sentence
-is sufficient.
-
-============================================================
-H. TRUE / FALSE
-============================================================
-
-Reproduce the statement.
-
-Then give only the required answer.
-
-Example:
-
-7.1.1 An object gives off heat as its temperature rises.
-
-False
-
-============================================================
-I. TABLES
-============================================================
-
-When a table in the original question is necessary for the
-solution, reproduce it in a clean readable format.
-
-Do not output raw markdown table separator syntax if it makes
-the printed memorandum look untidy.
-
-Prefer clean aligned text where practical.
-
-============================================================
-J. GRAPHS AND DRAWINGS
-============================================================
-
-This is CRITICAL.
-
-Inspect every page visually.
-
-If the question asks the candidate to:
-
-draw
-plot
-sketch
-construct
-illustrate
-
-the memorandum MUST contain the actual completed drawing.
-
-Text explaining what should be drawn is not sufficient.
-
-Examples include:
-
-- velocity-time graphs
-- force diagrams
-- geometric diagrams
-- electrical diagrams
-- vectors
-- engineering sketches
-
-============================================================
-K. REPRODUCE SOURCE FIGURES WHEN THEY MATTER
-============================================================
-
-If the question depends on a supplied figure, graph or
-diagram, include a clean reproduction when that materially
-helps the memorandum.
-
-Examples:
-
-- loaded beam used for moment calculations
-- force-displacement graph
-- Weston pulley block
-- circuit diagram
-- hydraulic arrangement
-
-Do not reproduce decorative images.
-
-============================================================
-L. SVG RULES
-============================================================
-
-For graphs and diagrams output safe SVG directly.
-
-Allowed elements ONLY:
-
-svg
-g
-line
-polyline
-polygon
-path
-rect
-circle
-ellipse
-text
-tspan
-defs
-marker
-
-Do not use:
-
-script
-foreignObject
-HTML
-JavaScript
-external images
-external links
-CSS stylesheets
-
-Always include:
-
-viewBox="0 0 ... ..."
-
-Use clear readable labels.
-
-Do not put SVG inside code fences.
-
-============================================================
-M. GRAPH STANDARD
-============================================================
-
-Graphs must contain where applicable:
-
-- x-axis
-- y-axis
-- axis names
-- SI units
-- correct scale
-- plotted coordinates
-- correct line/curve shape
-- required intercepts
-- important construction lines
-
-For a velocity-time graph, do not merely list the coordinate
-points.
-
-Actually draw the graph.
-
-============================================================
-N. WORK FROM GRAPHS
-============================================================
-
-When a calculation is based on a graph, use the same type of
-method an official memorandum would use.
-
-For displacement from a velocity-time graph, for example:
-
-S = ½bh + lb + lb + ½bh
-
-  = (10 × 50)
-    + (0,5 × 30 × 30)
-    + (30 × 20)
-    + (0,5 × 10 × 40)
-
-  = 1 750 m
-
-OR, if appropriate:
-
-S = [(40 + 10) / 2] × 30
-    + [(20 + 30) / 2] × 40
-
-  = 1 750 m
-
-Choose a concise valid method.
-
-============================================================
-O. STATICS
-============================================================
-
-For moment calculations use marking-guideline style.
-
-Example:
-
-Take moments about R:
-
-Σ↻M = Σ↺M
-
-...
-
-Then:
-
-Take moments about L:
-
-Σ↻M = Σ↺M
-
-...
-
-When checking equilibrium use:
-
-ΣF↑ = ΣF↓
-
-or equivalent notation supported by the supplied material.
-
-============================================================
-P. ENERGY
-============================================================
-
-If conservation of energy is requested, follow the requested
-method.
-
-Example:
-
-Eₖ = ½mv²
-
-Eₖ = ½(0,6)(25²)
-
-Eₖ = 187,5 J
-
-Eₚ top = Eₖ bottom
-
-mgh = 187,5
-
-h = 187,5 / (0,6 × 9,8)
-
-h = 31,888 m
-
-Do not silently replace a specifically requested method with
-a different one.
-
-============================================================
-Q. WORK / POWER
-============================================================
-
-Use concise memorandum-style working.
-
-Example:
-
-Weight₍chain₎ = 6 000 − 4 500
-
-               = 1 500 N
-
-For work from a graph, show the appropriate graph-area
-calculation.
-
-============================================================
-R. MECHANICAL DRIVES
-============================================================
-
-Use the formula notation supplied on the formula sheet.
-
-Show conversions where needed.
-
-Example:
-
-D = 220 / 1 000
-
-  = 0,22 m
-
-V = πDN
-
-  = π(0,22)(12)
-
-  = 8,294 m/s
-
-Keep the working compact.
-
-============================================================
-S. FRICTION
-============================================================
-
-Use the formulas and symbols from the supplied sheet where
-applicable.
-
-Example:
-
-F꜀ = w cos θ
-
-   = 50 × 9,8 × cos 15°
-
-   = 473,304 N
-
-Do not insert unnecessary explanatory paragraphs.
-
-============================================================
-T. HEAT
-============================================================
-
-For heat-transfer problems use official memo conventions.
-
-Example:
-
-Qlost = Qgained
-
-mc(t₁ − t₂) = mc(t₂ − t₁)
-
-Then substitute and solve directly.
-
-Preserve units and prescribed constants.
-
-============================================================
-U. ELECTRICITY
-============================================================
-
-Use the supplied electrical formulas and compact algebra.
-
-Example:
-
-1/Rₚ = 1/R₁ + 1/R₂ + 1/R₃
-
-     = 1/4 + 1/3 + 1/6
-
-1/Rₚ = 3/4
-
-Rₚ = 1,333 Ω
-
-Keep the solution aligned vertically where practical.
-
-============================================================
-V. MATHEMATICAL DISPLAY
-============================================================
-
-Do not output raw LaTeX.
-
-Never output:
+NEVER output:
 
 \\frac
 \\boxed
-\\sqrt
 \\begin
 \\end
+\\text
 \\mathrm
 \\times
 
-Use readable symbols such as:
+Never use LaTeX syntax.
+
+Use:
 
 ×
 ÷
@@ -615,209 +320,135 @@ Use readable symbols such as:
 √
 π
 Σ
-η
 θ
-Φ
-µ
+η
 ρ
 Ω
 Δ
 ↑
 ↓
 
-Use spaces as thousands separators where appropriate:
-
-4 240
-157 500
-
-Use the decimal convention used in the examination/memo when
-clear from the source.
-
 ============================================================
-W. DO NOT OVER-FORMAT
+FORMULAS
 ============================================================
 
-Avoid repeated visual labels such as:
+Use formulas supplied with the question paper where
+applicable.
 
-FORMULA
-SUBSTITUTION
-WORKING
-FINAL ANSWER
+Correct algebraic rearrangement is allowed.
 
-for every calculation.
-
-The QUESTION NUMBER itself is sufficient structure.
-
-The mathematical working should visually communicate the
-steps.
-
-Use headings only where they genuinely mirror the official
-memo or improve comprehension.
+Match official memorandum methods where an official memo is
+provided.
 
 ============================================================
-X. COMPLETENESS CHECK
+ROUNDING
 ============================================================
 
-Before returning the draft, compare the memorandum against
-the complete question paper.
+Follow the original examination instructions.
 
-Verify:
+Do not turn exact integer answers into unnecessary decimals.
 
-- every readable question is answered
-- every question number is correct
-- question wording is included
-- drawings requested by the paper are drawn
-- important source figures are reproduced
-- supplied formulas were respected
-- prescribed constants were respected
-- correct SI units are shown
-- rounding follows the paper
-- number of theory answers matches the question
-- calculations are mathematically correct
-- presentation resembles an official marking guideline
+Example:
 
-Return ONLY the completed memorandum.
-`;
+486 m
 
-/* =========================================================
-   VERIFIER
-   ========================================================= */
+NOT
 
-const VERIFY_PROMPT = `
-You are the independent final checker for TestSolverAI
-Version 5.
+486,000 m
 
-Your job is to transform the draft into a FINAL PROFESSIONAL
-EXAMINATION MEMORANDUM.
-
-Inspect ALL original uploaded documents yourself.
-
-Do not trust the draft automatically.
+unless that decimal representation is genuinely appropriate
+in the source convention.
 
 ============================================================
-1. IDENTIFY SOURCE HIERARCHY
+THEORY
 ============================================================
 
-Identify:
+Use short marking-guideline answers.
 
-- original question paper
-- formula sheet/data sheet
-- official memorandum/marking guideline if supplied
-- other reference material
+For:
 
-If an official memorandum is supplied, it is the highest
-priority answer/style reference.
+Name THREE...
 
-The question paper remains the authoritative source for the
-question wording.
+return a list block with exactly THREE appropriate answers.
 
-The formula sheet and instruction page remain authoritative
-for formulas, constants, units and examination requirements.
+Definitions should normally use a text block.
 
 ============================================================
-2. COMPARE EVERY QUESTION
+ALTERNATIVE METHODS
 ============================================================
 
-For every question check:
+Where an official memorandum accepts a useful alternative
+method:
 
-- correct question number
-- full original question wording
-- correct interpretation
-- correct answer
-- correct method
-- correct formula
-- correct substitution
-- correct arithmetic
-- correct SI unit
-- correct rounding
-- correct number of requested answers
+use an "or" block containing the word OR
 
-Correct every error found.
+followed by the alternate calculation.
+
+Do not invent alternatives unnecessarily.
 
 ============================================================
-3. MATCH MEMORANDUM STYLE
+GRAPHS
 ============================================================
 
-Remove tutorial-style clutter.
+If the candidate must draw or plot a graph:
 
-Unless genuinely necessary, remove repeated labels such as:
+YOU MUST return a graph block.
 
-GIVEN
-FORMULA FROM FORMULA SHEET
-REARRANGE
-SUBSTITUTION
-WORKING
-FINAL ANSWER
+For normal XY / time graphs:
 
-Convert calculations into compact official-memo style.
+diagram.kind = "line_graph"
 
-BAD:
+Supply:
 
-FORMULA FROM FORMULA SHEET
-a = ...
+x_label
+y_label
+x_values
+y_values
 
-REARRANGE
-...
+The x_values and y_values arrays MUST have the same length.
 
-SUBSTITUTION
-...
+The application will draw this graph itself.
 
-WORKING
-...
+Do NOT put SVG in diagram.svg for a normal line graph.
 
-FINAL ANSWER
-...
+Example:
 
-GOOD:
+x_values:
+[0,10,20,30,40,50,60]
 
-a = (v − u) / t
-
-  = (40 − 10) / 30
-
-  = 1 m/s²
+y_values:
+[10,20,30,40,40,40,0]
 
 ============================================================
-4. DO NOT REMOVE QUESTION WORDING
+SOURCE FIGURES
 ============================================================
 
-Although the calculation should look like an official memo,
-the user wants a stand-alone memorandum.
+If an existing figure is materially important to a
+calculation, reproduce it.
 
-Therefore preserve the full wording of each question before
-its answer.
+Examples:
 
-============================================================
-5. OFFICIAL MEMO REFERENCE
-============================================================
+loaded beam
+Weston pulley
+force graph
+circuit
+technical diagram
 
-If an official memo is attached:
+For these use:
 
-- follow its accepted answer terminology
-- follow its preferred calculation structure
-- follow its accepted alternatives
-- follow its units
-- follow its rounding
-- follow its graphical solution style
-- follow its notation where practical
+type = "diagram"
 
-Do not deliberately rewrite correct official memo answers
-into different wording.
+diagram.kind = "source_figure"
+or
+diagram.kind = "technical"
 
-============================================================
-6. DRAWINGS AND GRAPHS
-============================================================
+Put a safe SVG drawing in:
 
-Visually inspect the original paper.
+diagram.svg
 
-If the paper asks for a drawing, graph, plot, sketch or
-construction, the final memorandum MUST include it.
+The SVG must contain the actual drawing, not merely labels.
 
-Also reproduce important source figures where needed for
-understanding or working.
-
-If the draft omitted one, create a safe SVG.
-
-Allowed SVG elements only:
+Allowed SVG elements:
 
 svg
 g
@@ -833,80 +464,162 @@ tspan
 defs
 marker
 
-No scripts.
-No HTML.
-No foreignObject.
-No external URLs.
-No external images.
-No code fences.
+Never use:
+
+script
+foreignObject
+HTML
+JavaScript
+external links
+external images
+CSS stylesheets
+
+Always use a viewBox.
 
 ============================================================
-7. ROUNDING
+IMPORTANT FIGURE RULE
 ============================================================
 
-Do not append three zero decimals to exact answers merely
-because the paper mentions three-decimal rounding.
+Never return a diagram block containing only text such as:
 
-For example:
+"160 N 70 N 250 N L R 13 m"
 
-486 m
+If you create a source figure, diagram.svg MUST contain
+actual SVG shapes and lines.
 
-should remain:
-
-486 m
-
-unless rounding is actually applicable.
-
-But:
-
-153,846 N
-
-should retain the appropriate three-decimal result.
+If you cannot confidently reproduce a source figure, use a
+text block explaining that the source figure must be
+consulted rather than pretending a drawing was generated.
 
 ============================================================
-8. ALTERNATIVE METHODS
+MATH STYLE EXAMPLES
 ============================================================
 
-If the supplied official memorandum clearly accepts multiple
-methods, you may show:
+DYNAMICS:
 
-OR
+a = (v − u) / t
+= (40 − 10) / 30
+= 1 m/s²
 
-between the methods.
+STATICS:
 
-Do not generate unnecessary alternatives.
+Take moments about R:
+
+Σ clockwise moments = Σ anticlockwise moments
+
+(L × 13) + (250 × 1)
+= (70 × 7) + (160 × 11)
+
+13L = 2 000
+
+L = 153,846 N
+
+HEAT:
+
+Q lost = Q gained
+
+6 × 500 × (145 − T)
+= 40 × 1 500 × (T − 23)
+
+T = 28,810 °C
+
+ELECTRICITY:
+
+1 / Rₚ = 1 / R₁ + 1 / R₂ + 1 / R₃
+
+= 1 / 4 + 1 / 3 + 1 / 6
+
+Rₚ = 1,333 Ω
 
 ============================================================
-9. FINAL CHECK
+COMPLETENESS
 ============================================================
 
-Before returning the final answer, compare it page-by-page
-against the original question paper.
+Answer every readable question.
 
-Ensure no readable question is missing.
+Include every requested graph.
 
-Ensure no required graph or drawing is missing.
+Include important source figures required for understanding
+the calculation.
 
-Ensure no calculation has been turned into unnecessary
-tutorial prose.
-
-Return ONLY the final corrected memorandum.
-
-Do not mention:
-- draft
-- verification
-- AI
-- source hierarchy
-- checking process
+Preserve the original question order.
 `;
 
+
 /* =========================================================
-   FILE CONVERSION
+   VERIFIER PROMPT
+   ========================================================= */
+
+const VERIFY_PROMPT = `
+You are the independent final verification stage of
+TestSolverAI Version 6.
+
+You receive:
+
+- the original uploaded files
+- a structured draft memorandum
+
+Independently inspect the ORIGINAL files.
+
+Correct the draft.
+
+============================================================
+VERIFY
+============================================================
+
+Check:
+
+- every question exists
+- original question wording is correct
+- calculations are correct
+- supplied formulas are respected
+- constants are correct
+- units are correct
+- rounding is correct
+- official memorandum answers are followed if supplied
+- requested graphs exist
+- important figures exist
+- line_graph arrays contain correct plotted coordinates
+- source figure SVGs contain real shapes
+- no raw LaTeX exists anywhere
+
+============================================================
+LATEX IS FORBIDDEN
+============================================================
+
+Remove anything containing patterns such as:
+
+\\frac
+\\boxed
+\\begin
+\\end
+\\text
+\\mathrm
+
+Replace them with normal readable Unicode equations.
+
+============================================================
+MEMO STYLE
+============================================================
+
+Use compact marking-guideline working.
+
+Do not add tutor explanations.
+
+Preserve full question wording.
+
+Return only the corrected structured memorandum.
+`;
+
+
+/* =========================================================
+   FILE INPUT
    ========================================================= */
 
 function fileToInputPart(file) {
   const mime =
-    file.mimetype || "application/octet-stream";
+    file.mimetype ||
+    "application/octet-stream";
 
   const b64 =
     file.buffer.toString("base64");
@@ -914,47 +627,53 @@ function fileToInputPart(file) {
   if (mime.startsWith("image/")) {
     return {
       type: "input_image",
-      image_url: `data:${mime};base64,${b64}`,
+      image_url:
+        `data:${mime};base64,${b64}`,
       detail: "high"
     };
   }
 
   return {
     type: "input_file",
-    filename: file.originalname || "document",
-    file_data: `data:${mime};base64,${b64}`
+    filename:
+      file.originalname ||
+      "document",
+    file_data:
+      `data:${mime};base64,${b64}`
   };
 }
 
+
 /* =========================================================
-   EXTRACT RESPONSE
+   EXTRACT OUTPUT
    ========================================================= */
 
 function extractOutputText(data) {
   if (
-    typeof data?.output_text === "string" &&
+    typeof data?.output_text ===
+      "string" &&
     data.output_text.trim()
   ) {
     return data.output_text;
   }
 
-  if (!Array.isArray(data?.output)) {
-    return "";
-  }
-
   const pieces = [];
 
-  for (const item of data.output) {
-    if (!Array.isArray(item?.content)) {
-      continue;
-    }
+  if (Array.isArray(data?.output)) {
+    for (const item of data.output) {
+      if (!Array.isArray(item?.content)) {
+        continue;
+      }
 
-    for (const part of item.content) {
-      if (
-        part?.type === "output_text" &&
-        typeof part.text === "string"
-      ) {
-        pieces.push(part.text);
+      for (const part of item.content) {
+        if (
+          part?.type ===
+            "output_text" &&
+          typeof part.text ===
+            "string"
+        ) {
+          pieces.push(part.text);
+        }
       }
     }
   }
@@ -962,50 +681,74 @@ function extractOutputText(data) {
   return pieces.join("\n");
 }
 
+
 /* =========================================================
-   OPENAI REQUEST
+   STRUCTURED OPENAI REQUEST
    ========================================================= */
 
-async function callOpenAI({
+async function callStructuredOpenAI({
   instructions,
   content
 }) {
-  const response = await fetch(
-    "https://api.openai.com/v1/responses",
-    {
-      method: "POST",
+  const response =
+    await fetch(
+      "https://api.openai.com/v1/responses",
 
-      headers: {
-        Authorization:
-          `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json"
-      },
+      {
+        method: "POST",
 
-      body: JSON.stringify({
-        model: MODEL,
+        headers: {
+          Authorization:
+            `Bearer ${process.env.OPENAI_API_KEY}`,
 
-        reasoning: {
-          effort: "high"
+          "Content-Type":
+            "application/json"
         },
 
-        instructions,
+        body: JSON.stringify({
+          model: MODEL,
 
-        input: [
-          {
-            role: "user",
-            content
+          reasoning: {
+            effort: "high"
+          },
+
+          instructions,
+
+          input: [
+            {
+              role: "user",
+              content
+            }
+          ],
+
+          text: {
+            format: {
+              type: "json_schema",
+
+              name:
+                "testsolver_memorandum",
+
+              strict: true,
+
+              schema:
+                MEMO_SCHEMA
+            }
           }
-        ]
-      })
-    }
-  );
+        })
+      }
+    );
 
-  const data = await response.json();
+  const data =
+    await response.json();
 
   if (!response.ok) {
     console.error(
       "OpenAI API error:",
-      JSON.stringify(data, null, 2)
+      JSON.stringify(
+        data,
+        null,
+        2
+      )
     );
 
     throw new Error(
@@ -1014,22 +757,476 @@ async function callOpenAI({
     );
   }
 
-  return extractOutputText(data);
+  const text =
+    extractOutputText(data);
+
+  if (!text.trim()) {
+    throw new Error(
+      "No structured answer was returned."
+    );
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.error(
+      "Structured JSON parse error:",
+      text.slice(0, 1000)
+    );
+
+    throw new Error(
+      "The AI returned an invalid structured memorandum."
+    );
+  }
 }
+
+
+/* =========================================================
+   SVG HELPERS
+   ========================================================= */
+
+function esc(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+
+/* =========================================================
+   DRAW LINE GRAPH
+   ========================================================= */
+
+function createLineGraph(diagram) {
+  const xs =
+    Array.isArray(
+      diagram?.x_values
+    )
+      ? diagram.x_values
+      : [];
+
+  const ys =
+    Array.isArray(
+      diagram?.y_values
+    )
+      ? diagram.y_values
+      : [];
+
+  if (
+    xs.length < 2 ||
+    xs.length !== ys.length
+  ) {
+    return "";
+  }
+
+  const width = 720;
+  const height = 440;
+
+  const left = 90;
+  const right = 40;
+  const top = 55;
+  const bottom = 80;
+
+  const plotW =
+    width - left - right;
+
+  const plotH =
+    height - top - bottom;
+
+  const minX =
+    Math.min(...xs, 0);
+
+  const maxX =
+    Math.max(...xs, 1);
+
+  const minY =
+    Math.min(...ys, 0);
+
+  const maxY =
+    Math.max(...ys, 1);
+
+  const xRange =
+    maxX - minX || 1;
+
+  const yRange =
+    maxY - minY || 1;
+
+  const px = x =>
+    left +
+    ((x - minX) / xRange) *
+      plotW;
+
+  const py = y =>
+    top +
+    plotH -
+    ((y - minY) / yRange) *
+      plotH;
+
+  const points =
+    xs
+      .map(
+        (x, i) =>
+          `${px(x).toFixed(1)},${py(
+            ys[i]
+          ).toFixed(1)}`
+      )
+      .join(" ");
+
+  const xTicks =
+    xs
+      .map(
+        x => `
+        <line
+          x1="${px(x)}"
+          y1="${top}"
+          x2="${px(x)}"
+          y2="${top + plotH}"
+          stroke="#dddddd"
+          stroke-width="1"
+        />
+
+        <text
+          x="${px(x)}"
+          y="${top + plotH + 28}"
+          text-anchor="middle"
+          font-size="15"
+        >${esc(x)}</text>
+      `
+      )
+      .join("");
+
+  const uniqueY =
+    [...new Set(ys)]
+      .sort(
+        (a, b) => a - b
+      );
+
+  const yTicks =
+    uniqueY
+      .map(
+        y => `
+        <line
+          x1="${left}"
+          y1="${py(y)}"
+          x2="${left + plotW}"
+          y2="${py(y)}"
+          stroke="#dddddd"
+          stroke-width="1"
+        />
+
+        <text
+          x="${left - 15}"
+          y="${py(y) + 5}"
+          text-anchor="end"
+          font-size="15"
+        >${esc(y)}</text>
+      `
+      )
+      .join("");
+
+  const pointDots =
+    xs
+      .map(
+        (x, i) => `
+        <circle
+          cx="${px(x)}"
+          cy="${py(ys[i])}"
+          r="4"
+          fill="black"
+        />
+      `
+      )
+      .join("");
+
+  return `
+<svg
+  viewBox="0 0 ${width} ${height}"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <text
+    x="${width / 2}"
+    y="28"
+    text-anchor="middle"
+    font-size="21"
+    font-weight="700"
+  >${esc(
+    diagram.title ||
+      "Graph"
+  )}</text>
+
+  ${xTicks}
+  ${yTicks}
+
+  <line
+    x1="${left}"
+    y1="${top}"
+    x2="${left}"
+    y2="${top + plotH}"
+    stroke="black"
+    stroke-width="2"
+  />
+
+  <line
+    x1="${left}"
+    y1="${top + plotH}"
+    x2="${left + plotW}"
+    y2="${top + plotH}"
+    stroke="black"
+    stroke-width="2"
+  />
+
+  <polyline
+    points="${points}"
+    fill="none"
+    stroke="black"
+    stroke-width="4"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+  />
+
+  ${pointDots}
+
+  <text
+    x="${left + plotW / 2}"
+    y="${height - 18}"
+    text-anchor="middle"
+    font-size="17"
+    font-weight="700"
+  >${esc(
+    diagram.x_label ||
+      "x"
+  )}</text>
+
+  <text
+    x="24"
+    y="${top + plotH / 2}"
+    text-anchor="middle"
+    font-size="17"
+    font-weight="700"
+    transform="rotate(-90 24 ${
+      top + plotH / 2
+    })"
+  >${esc(
+    diagram.y_label ||
+      "y"
+  )}</text>
+</svg>
+`;
+}
+
+
+/* =========================================================
+   REMOVE LATEX IF MODEL TRIES IT
+   ========================================================= */
+
+function cleanEquation(line) {
+  return String(line ?? "")
+    .replace(/\\boxed\s*\{([^{}]*)\}/g, "$1")
+    .replace(/\\text\s*\{([^{}]*)\}/g, "$1")
+    .replace(/\\mathrm\s*\{([^{}]*)\}/g, "$1")
+    .replace(/\\cdot/g, "·")
+    .replace(/\\times/g, "×")
+    .replace(/\\div/g, "÷")
+    .replace(/\\pi/g, "π")
+    .replace(/\\theta/g, "θ")
+    .replace(/\\eta/g, "η")
+    .replace(/\\rho/g, "ρ")
+    .replace(/\\Omega/g, "Ω")
+    .replace(/\\Delta/g, "Δ")
+    .replace(/\\uparrow/g, "↑")
+    .replace(/\\downarrow/g, "↓")
+    .replace(/\\,/g, " ")
+    .replace(/\\\\/g, "")
+    .replace(/\\begin\{[^}]+\}/g, "")
+    .replace(/\\end\{[^}]+\}/g, "")
+    .replace(/\\\[/g, "")
+    .replace(/\\\]/g, "")
+    .trim();
+}
+
+
+/* =========================================================
+   CONVERT STRUCTURE TO APP OUTPUT
+   ========================================================= */
+
+function structureToMemo(memo) {
+  const out = [];
+
+  if (memo.title) {
+    out.push(
+      memo.title.toUpperCase()
+    );
+  }
+
+  if (memo.subtitle) {
+    out.push(
+      memo.subtitle
+    );
+  }
+
+  out.push("");
+
+  for (
+    const section
+    of memo.questions || []
+  ) {
+    out.push(
+      `QUESTION ${section.heading}`
+    );
+
+    out.push("");
+
+    for (
+      const item
+      of section.items || []
+    ) {
+      const questionLine =
+        [
+          item.number,
+          item.question_text
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+      out.push(questionLine);
+
+      out.push("");
+
+      for (
+        const block
+        of item.blocks || []
+      ) {
+        if (
+          block.type ===
+          "text"
+        ) {
+          if (block.text) {
+            out.push(
+              cleanEquation(
+                block.text
+              )
+            );
+
+            out.push("");
+          }
+
+          continue;
+        }
+
+        if (
+          block.type ===
+          "equation"
+        ) {
+          for (
+            const line
+            of block.lines || []
+          ) {
+            out.push(
+              cleanEquation(
+                line
+              )
+            );
+          }
+
+          out.push("");
+
+          continue;
+        }
+
+        if (
+          block.type ===
+          "list"
+        ) {
+          for (
+            const entry
+            of block.items || []
+          ) {
+            out.push(
+              `• ${cleanEquation(
+                entry
+              )}`
+            );
+          }
+
+          out.push("");
+
+          continue;
+        }
+
+        if (
+          block.type ===
+          "or"
+        ) {
+          out.push("OR");
+          out.push("");
+
+          continue;
+        }
+
+        if (
+          block.type ===
+          "graph"
+        ) {
+          const svg =
+            createLineGraph(
+              block.diagram
+            );
+
+          if (svg) {
+            out.push(svg);
+            out.push("");
+          }
+
+          continue;
+        }
+
+        if (
+          block.type ===
+          "diagram"
+        ) {
+          const svg =
+            String(
+              block?.diagram?.svg ||
+                ""
+            ).trim();
+
+          if (
+            svg.startsWith("<svg") &&
+            svg.includes("</svg>")
+          ) {
+            out.push(svg);
+            out.push("");
+          }
+
+          continue;
+        }
+      }
+    }
+  }
+
+  return out.join("\n");
+}
+
 
 /* =========================================================
    HEALTH
    ========================================================= */
 
-app.get("/api/health", (req, res) => {
-  res.json({
-    ok: true,
-    version: "5.0",
-    model: MODEL,
-    mode: "official-memorandum",
-    verification: true
-  });
-});
+app.get(
+  "/api/health",
+  (req, res) => {
+    res.json({
+      ok: true,
+      version: "6.0",
+      model: MODEL,
+      mode:
+        "structured-memorandum"
+    });
+  }
+);
+
 
 /* =========================================================
    SOLVE
@@ -1037,131 +1234,142 @@ app.get("/api/health", (req, res) => {
 
 app.post(
   "/api/solve",
-  upload.array("files", 20),
+
+  upload.array(
+    "files",
+    20
+  ),
 
   async (req, res) => {
     try {
-      if (!process.env.OPENAI_API_KEY) {
-        return res.status(500).json({
-          error:
-            "OPENAI_API_KEY is not configured on the server."
-        });
+      if (
+        !process.env
+          .OPENAI_API_KEY
+      ) {
+        return res
+          .status(500)
+          .json({
+            error:
+              "OPENAI_API_KEY is not configured on the server."
+          });
       }
 
       if (
         !req.files ||
         req.files.length === 0
       ) {
-        return res.status(400).json({
-          error:
-            "Please upload a question paper or take a photo first."
-        });
+        return res
+          .status(400)
+          .json({
+            error:
+              "Please upload a question paper or take a photo first."
+          });
       }
 
       const sourceParts =
-        req.files.map(fileToInputPart);
-
-      /* ===================================================
-         PASS 1
-         =================================================== */
-
-      const solverContent = [
-        {
-          type: "input_text",
-
-          text:
-            "Inspect EVERY uploaded file before answering. " +
-            "Identify the question paper, formula/data sheet and " +
-            "any official memorandum or marking guideline. " +
-            "Generate a complete stand-alone memorandum using the " +
-            "full original question wording but present the answers " +
-            "and calculations in compact official examination " +
-            "marking-guideline style. Draw every requested graph or " +
-            "diagram and reproduce important source figures where " +
-            "needed."
-        },
-
-        ...sourceParts
-      ];
-
-      const draft = await callOpenAI({
-        instructions: SOLVER_PROMPT,
-        content: solverContent
-      });
-
-      if (!draft.trim()) {
-        throw new Error(
-          "The solver did not return an answer."
+        req.files.map(
+          fileToInputPart
         );
-      }
 
-      /* ===================================================
-         PASS 2 - INDEPENDENT FINAL MEMO CHECK
-         =================================================== */
+      /* =============================
+         PASS 1
+      ============================== */
 
-      const verifierContent = [
-        {
-          type: "input_text",
+      const draft =
+        await callStructuredOpenAI({
+          instructions:
+            SOLVER_PROMPT,
 
-          text:
-            "Inspect the ORIGINAL uploaded files independently. " +
-            "Then check and rewrite the draft below into the final " +
-            "professional memorandum. Match any supplied official " +
-            "memorandum closely in calculation style, terminology, " +
-            "accepted methods, units and rounding. Keep full question " +
-            "wording, but remove tutorial-style calculation headings. " +
-            "Ensure every requested graph/drawing exists.\n\n" +
-            "================ DRAFT ================\n\n" +
-            draft
-        },
+          content: [
+            {
+              type:
+                "input_text",
 
-        ...sourceParts
-      ];
+              text:
+                "Read every uploaded page. Produce a complete structured memorandum. " +
+                "Use full question wording, official marking-guideline style working, " +
+                "the supplied formula sheet, and actual graph/diagram data."
+            },
 
-      const verified =
-        await callOpenAI({
-          instructions: VERIFY_PROMPT,
-          content: verifierContent
+            ...sourceParts
+          ]
         });
 
-      const finalAnswer =
-        verified.trim() || draft.trim();
+      /* =============================
+         PASS 2
+      ============================== */
+
+      const verified =
+        await callStructuredOpenAI({
+          instructions:
+            VERIFY_PROMPT,
+
+          content: [
+            {
+              type:
+                "input_text",
+
+              text:
+                "Independently verify the original files and correct the structured " +
+                "memorandum below. Preserve the required schema. Return the complete " +
+                "corrected memorandum.\n\n" +
+                JSON.stringify(
+                  draft
+                )
+            },
+
+            ...sourceParts
+          ]
+        });
+
+      const finalStructure =
+        verified || draft;
+
+      const answer =
+        structureToMemo(
+          finalStructure
+        );
 
       return res.json({
-        answer: finalAnswer,
+        answer,
+        structured:
+          finalStructure,
         model: MODEL,
-        verified: Boolean(
-          verified.trim()
-        ),
-        version: "5.0",
-        mode: "official-memorandum"
+        verified: true,
+        version: "6.0"
       });
 
     } catch (error) {
       console.error(
-        "TestSolverAI Version 5 error:",
+        "TestSolverAI V6 error:",
         error
       );
 
-      return res.status(500).json({
-        error:
-          error?.message ||
-          "Something went wrong while solving the paper."
-      });
+      return res
+        .status(500)
+        .json({
+          error:
+            error?.message ||
+            "Something went wrong while solving the paper."
+        });
     }
   }
 );
 
+
 /* =========================================================
-   START SERVER
+   START
    ========================================================= */
 
-app.listen(PORT, () => {
-  console.log(
-    `TestSolverAI Version 5 running on port ${PORT}`
-  );
+app.listen(
+  PORT,
+  () => {
+    console.log(
+      `TestSolverAI Version 6 running on port ${PORT}`
+    );
 
-  console.log(
-    `Model: ${MODEL}`
-  );
-});
+    console.log(
+      `Model: ${MODEL}`
+    );
+  }
+);
