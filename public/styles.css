@@ -775,3 +775,389 @@ h3 {
     page-break-after: avoid;
   }
 }
+
+
+/* =========================================================
+   TEST SOLVER AI V6.3
+   PROFESSIONAL MEMORANDUM MATHS
+   ========================================================= */
+
+/* Calculation block */
+
+.memo-equation-group {
+  margin: 10px 0 16px 32px;
+  padding: 0;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+
+/* Individual calculation line */
+
+.memo-equation {
+  min-height: 30px;
+  margin: 2px 0;
+  padding: 0;
+
+  font-size: 17px;
+  line-height: 1.55;
+
+  color: #111827;
+}
+
+
+/* Proper KaTeX maths */
+
+.memo-equation-math {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  padding: 2px 0 3px 0;
+}
+
+
+/* KaTeX normally centres display maths.
+   A real memorandum should be left aligned. */
+
+.memo-equation-math .katex-display {
+  margin: 0;
+  text-align: left;
+  width: auto;
+}
+
+
+.memo-equation-math .katex-display > .katex {
+  text-align: left;
+  white-space: nowrap;
+}
+
+
+/* Make mathematical notation slightly larger
+   than ordinary answer text */
+
+.memo-equation-math .katex {
+  font-size: 1.12em;
+}
+
+
+/* Fallback if KaTeX cannot load */
+
+.memo-equation-fallback {
+  font-family:
+    "Cambria Math",
+    "Times New Roman",
+    serif;
+
+  white-space: pre-wrap;
+}
+
+
+/* =========================================================
+   QUESTION LAYOUT
+   ========================================================= */
+
+.memo-item {
+  margin: 0 0 20px 0;
+  padding: 0 0 12px 0;
+
+  page-break-inside: auto;
+}
+
+
+.memo-subquestion {
+  margin: 10px 0 8px 0;
+
+  font-size: 16px;
+  line-height: 1.45;
+
+  font-weight: 650;
+
+  color: #111827;
+}
+
+
+.memo-question {
+  margin-top: 28px;
+  margin-bottom: 14px;
+
+  padding-bottom: 6px;
+
+  border-bottom: 1px solid #d1d5db;
+
+  font-size: 20px;
+  font-weight: 750;
+
+  color: #111827;
+
+  page-break-after: avoid;
+}
+
+
+/* =========================================================
+   NORMAL MEMO TEXT
+   ========================================================= */
+
+.memo-text {
+  margin: 5px 0 8px 32px;
+
+  font-size: 16px;
+  line-height: 1.5;
+
+  color: #1f2937;
+}
+
+
+/* =========================================================
+   LIST ANSWERS
+   ========================================================= */
+
+.memo-list {
+  margin: 7px 0 14px 48px;
+  padding-left: 20px;
+
+  font-size: 16px;
+  line-height: 1.55;
+
+  color: #1f2937;
+}
+
+
+.memo-list li {
+  margin: 3px 0;
+}
+
+
+/* =========================================================
+   OR ALTERNATIVES
+   ========================================================= */
+
+.memo-or {
+  width: 100%;
+
+  margin: 15px 0;
+
+  text-align: center;
+
+  font-size: 15px;
+  font-weight: 800;
+
+  letter-spacing: 0.08em;
+
+  color: #111827;
+
+  page-break-after: avoid;
+}
+
+
+/* =========================================================
+   DOCUMENT HEADING
+   ========================================================= */
+
+.memo-document-title {
+  margin: 4px 0 5px 0;
+
+  text-align: center;
+
+  font-size: 23px;
+  font-weight: 800;
+
+  color: #111827;
+}
+
+
+.memo-document-subtitle {
+  margin: 0 0 24px 0;
+
+  text-align: center;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  color: #4b5563;
+}
+
+
+/* =========================================================
+   GRAPHS AND TECHNICAL DIAGRAMS
+   ========================================================= */
+
+.memo-diagram {
+  max-width: 760px;
+
+  margin: 16px auto 22px auto;
+  padding: 14px;
+
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+
+  background: #ffffff;
+
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+
+.memo-diagram-title {
+  margin-bottom: 10px;
+
+  text-align: center;
+
+  font-size: 15px;
+  font-weight: 700;
+
+  color: #111827;
+}
+
+
+.memo-diagram svg {
+  display: block;
+
+  width: 100%;
+  height: auto;
+
+  margin: 0 auto;
+}
+
+
+.memo-diagram-error {
+  padding: 15px;
+
+  text-align: center;
+
+  color: #991b1b;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 700px) {
+
+  .memo-equation-group {
+    margin-left: 12px;
+  }
+
+  .memo-text {
+    margin-left: 12px;
+  }
+
+  .memo-equation {
+    font-size: 15px;
+  }
+
+  .memo-equation-math .katex {
+    font-size: 1em;
+  }
+
+  .memo-subquestion {
+    font-size: 15px;
+  }
+
+  .memo-question {
+    font-size: 18px;
+  }
+
+  .memo-list {
+    margin-left: 22px;
+  }
+
+  .memo-diagram {
+    padding: 8px;
+  }
+}
+
+
+/* =========================================================
+   PRINT / SAVE AS PDF
+   ========================================================= */
+
+@media print {
+
+  .memo-document-title {
+    font-size: 18pt;
+  }
+
+  .memo-document-subtitle {
+    font-size: 10pt;
+  }
+
+  .memo-question {
+    margin-top: 18px;
+
+    font-size: 14pt;
+
+    border-bottom:
+      0.5pt solid #999;
+  }
+
+  .memo-subquestion {
+    font-size: 10.5pt;
+  }
+
+  .memo-text {
+    margin-left: 22px;
+
+    font-size: 10.5pt;
+  }
+
+  .memo-equation-group {
+    margin:
+      6px 0
+      10px 26px;
+  }
+
+  .memo-equation {
+    min-height: 22px;
+
+    margin: 0;
+
+    font-size: 10.5pt;
+
+    line-height: 1.35;
+  }
+
+  .memo-equation-math {
+    overflow: visible;
+  }
+
+  .memo-equation-math .katex {
+    font-size: 1em;
+  }
+
+  .memo-list {
+    font-size: 10.5pt;
+  }
+
+  .memo-or {
+    margin: 10px 0;
+
+    font-size: 10pt;
+  }
+
+  .memo-diagram {
+    max-width: 620px;
+
+    margin:
+      10px auto
+      15px auto;
+
+    padding: 8px;
+
+    border:
+      0.5pt solid #aaa;
+  }
+
+  .memo-diagram-title {
+    font-size: 10pt;
+  }
+
+  .memo-equation-group,
+  .memo-diagram {
+    break-inside: avoid;
+  }
+}
