@@ -605,6 +605,7 @@ function createSvgText(
     String(text);
 
   return el;
+}
 function buildLineGraph(
   diagram
 ) {
