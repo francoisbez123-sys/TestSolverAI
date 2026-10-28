@@ -714,6 +714,8 @@ diagram.kind = "line_graph"
 
 Provide correct coordinate arrays.
 
+Both arrays must contain the same number of values, with at least two paired points. Preserve the graph's intended point order and use values from the question or calculate them from the stated relationship; do not invent points.
+
 Example:
 
 x_values:
