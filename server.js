@@ -1271,223 +1271,114 @@ function esc(value) {
    ========================================================= */
 
 function createLineGraph(diagram) {
-  const xs =
-    Array.isArray(diagram?.x_values)
-      ? diagram.x_values
-      : [];
-
-  const ys =
-    Array.isArray(diagram?.y_values)
-      ? diagram.y_values
-      : [];
-
+  const xs = Array.isArray(diagram?.x_values) ? diagram.x_values : [];
+  const ys = Array.isArray(diagram?.y_values) ? diagram.y_values : [];
 
   if (
     xs.length < 2 ||
-    xs.length !== ys.length
+    xs.length !== ys.length ||
+    !xs.every(value => typeof value === "number" && Number.isFinite(value)) ||
+    !ys.every(value => typeof value === "number" && Number.isFinite(value))
   ) {
     return "";
   }
 
-
   const width = 720;
-  const height = 430;
-
-  const left = 85;
-  const right = 40;
-  const top = 35;
+  const height = 410;
+  const left = 90;
+  const right = 35;
+  const top = 30;
   const bottom = 75;
+  const plotW = width - left - right;
+  const plotH = height - top - bottom;
 
-  const plotW =
-    width - left - right;
+  function niceStep(span, targetTicks) {
+    const raw = span / targetTicks;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
+    const fraction = raw / magnitude;
+    const niceFraction =
+      fraction <= 1 ? 1 :
+      fraction <= 2 ? 2 :
+      fraction <= 5 ? 5 : 10;
+    return niceFraction * magnitude;
+  }
 
-  const plotH =
-    height - top - bottom;
+  function makeScale(values, targetTicks) {
+    let min = Math.min(0, ...values);
+    let max = Math.max(0, ...values);
+    if (min === max) {
+      min = -1;
+      max = 1;
+    }
 
+    const step = niceStep(max - min, targetTicks);
+    const epsilon = 1e-10;
+    const low = Math.floor(min / step + epsilon) * step;
+    const high = Math.ceil(max / step - epsilon) * step;
+    const firstIndex = Math.ceil(low / step - epsilon);
+    const lastIndex = Math.floor(high / step + epsilon);
+    const ticks = [];
 
-  const minX =
-    Math.min(...xs, 0);
+    for (let index = firstIndex; index <= lastIndex; index++) {
+      const value = index * step;
+      ticks.push(Math.abs(value) < step * epsilon ? 0 : value);
+    }
 
-  const maxX =
-    Math.max(...xs, 1);
+    return { min: low, max: high, step, ticks };
+  }
 
-  const minY =
-    Math.min(...ys, 0);
+  function formatTick(value, step) {
+    if (value === 0) return "0";
+    const decimals = Math.max(0, Math.min(12, -Math.floor(Math.log10(step))));
+    return Number(value.toFixed(decimals)).toString();
+  }
 
-  const maxY =
-    Math.max(...ys, 1);
+  const xScale = makeScale(xs, 6);
+  const yScale = makeScale(ys, 5);
+  const px = value => left + ((value - xScale.min) / (xScale.max - xScale.min)) * plotW;
+  const py = value => top + plotH - ((value - yScale.min) / (yScale.max - yScale.min)) * plotH;
+  const axisX = px(0);
+  const axisY = py(0);
 
+  const xGrid = xScale.ticks
+    .filter(x => x !== 0)
+    .map(x => '<line x1="' + px(x) + '" y1="' + top + '" x2="' + px(x) + '" y2="' + (top + plotH) + '" stroke="#d9dee7" stroke-width="1"/>')
+    .join("");
 
-  const xRange =
-    maxX - minX || 1;
+  const yGrid = yScale.ticks
+    .filter(y => y !== 0)
+    .map(y => '<line x1="' + left + '" y1="' + py(y) + '" x2="' + (left + plotW) + '" y2="' + py(y) + '" stroke="#d9dee7" stroke-width="1"/>')
+    .join("");
 
-  const yRange =
-    maxY - minY || 1;
+  const xTicks = xScale.ticks.map(x => {
+    const tickX = px(x);
+    return '<line x1="' + tickX + '" y1="' + (axisY - 5) + '" x2="' + tickX + '" y2="' + (axisY + 5) + '" stroke="black" stroke-width="1.2"/>' +
+      '<text x="' + tickX + '" y="' + (axisY + 22) + '" text-anchor="middle" font-size="13">' + esc(formatTick(x, xScale.step)) + '</text>';
+  }).join("");
 
+  const yTicks = yScale.ticks.map(y => {
+    const tickY = py(y);
+    return '<line x1="' + (axisX - 5) + '" y1="' + tickY + '" x2="' + (axisX + 5) + '" y2="' + tickY + '" stroke="black" stroke-width="1.2"/>' +
+      '<text x="' + (axisX - 11) + '" y="' + (tickY + 4) + '" text-anchor="end" font-size="13">' + esc(formatTick(y, yScale.step)) + '</text>';
+  }).join("");
 
-  const px = x =>
-    left +
-    ((x - minX) / xRange) *
-      plotW;
+  const points = xs.map((x, index) => px(x) + "," + py(ys[index])).join(" ");
+  const pointDots = xs.map((x, index) =>
+    '<circle cx="' + px(x) + '" cy="' + py(ys[index]) + '" r="3" fill="black"/>'
+  ).join("");
 
-  const py = y =>
-    top +
-    plotH -
-    ((y - minY) / yRange) *
-      plotH;
-
-
-  const points =
-    xs
-      .map(
-        (x, i) =>
-          `${px(x).toFixed(1)},${py(
-            ys[i]
-          ).toFixed(1)}`
-      )
-      .join(" ");
-
-
-  const uniqueX =
-    [...new Set(xs)]
-      .sort(
-        (a, b) => a - b
-      );
-
-
-  const uniqueY =
-    [...new Set([0, ...ys])]
-      .sort(
-        (a, b) => a - b
-      );
-
-
-  const xTicks =
-    uniqueX
-      .map(
-        x => `
-        <line
-          x1="${px(x)}"
-          y1="${top + plotH}"
-          x2="${px(x)}"
-          y2="${top + plotH + 7}"
-          stroke="black"
-          stroke-width="1.4"
-        />
-
-        <text
-          x="${px(x)}"
-          y="${top + plotH + 28}"
-          text-anchor="middle"
-          font-size="15"
-        >${esc(x)}</text>
-      `
-      )
-      .join("");
-
-
-  const yTicks =
-    uniqueY
-      .map(
-        y => `
-        <line
-          x1="${left - 7}"
-          y1="${py(y)}"
-          x2="${left}"
-          y2="${py(y)}"
-          stroke="black"
-          stroke-width="1.4"
-        />
-
-        <text
-          x="${left - 14}"
-          y="${py(y) + 5}"
-          text-anchor="end"
-          font-size="15"
-        >${esc(y)}</text>
-      `
-      )
-      .join("");
-
-
-  const pointDots =
-    xs
-      .map(
-        (x, i) => `
-        <circle
-          cx="${px(x)}"
-          cy="${py(ys[i])}"
-          r="3"
-          fill="black"
-        />
-      `
-      )
-      .join("");
-
-
-  return `
-<svg
-  viewBox="0 0 ${width} ${height}"
-  xmlns="http://www.w3.org/2000/svg"
->
-  <line
-    x1="${left}"
-    y1="${top}"
-    x2="${left}"
-    y2="${top + plotH}"
-    stroke="black"
-    stroke-width="2"
-  />
-
-  <line
-    x1="${left}"
-    y1="${top + plotH}"
-    x2="${left + plotW}"
-    y2="${top + plotH}"
-    stroke="black"
-    stroke-width="2"
-  />
-
-  ${xTicks}
-
-  ${yTicks}
-
-  <polyline
-    points="${points}"
-    fill="none"
-    stroke="black"
-    stroke-width="2.5"
-    stroke-linejoin="round"
-    stroke-linecap="round"
-  />
-
-  ${pointDots}
-
-  <text
-    x="${left + plotW / 2}"
-    y="${height - 18}"
-    text-anchor="middle"
-    font-size="17"
-  >${esc(
-    diagram.x_label ||
-    "x"
-  )}</text>
-
-  <text
-    x="22"
-    y="${top + plotH / 2}"
-    text-anchor="middle"
-    font-size="17"
-    transform="rotate(-90 22 ${
-      top + plotH / 2
-    })"
-  >${esc(
-    diagram.y_label ||
-    "y"
-  )}</text>
-</svg>
-`;
+  return '<svg viewBox="0 0 ' + width + ' ' + height + '" xmlns="http://www.w3.org/2000/svg">' +
+    xGrid + yGrid +
+    '<line x1="' + axisX + '" y1="' + top + '" x2="' + axisX + '" y2="' + (top + plotH) + '" stroke="black" stroke-width="2"/>' +
+    '<line x1="' + left + '" y1="' + axisY + '" x2="' + (left + plotW) + '" y2="' + axisY + '" stroke="black" stroke-width="2"/>' +
+    xTicks + yTicks +
+    '<polyline points="' + points + '" fill="none" stroke="black" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+    pointDots +
+    '<text x="' + (left + plotW / 2) + '" y="' + (height - 16) + '" text-anchor="middle" font-size="17">' + esc(diagram.x_label || "x") + '</text>' +
+    '<text x="24" y="' + (top + plotH / 2) + '" text-anchor="middle" font-size="17" transform="rotate(-90 24 ' + (top + plotH / 2) + ')">' + esc(diagram.y_label || "y") + '</text>' +
+    '</svg>';
 }
+
 
 
 /* =========================================================
