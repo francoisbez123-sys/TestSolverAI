@@ -606,9 +606,7 @@ function createSvgText(
 
   return el;
 }
-function buildLineGraph(
-  diagram
-) {
+
   const xs =
     Array.isArray(diagram?.x_values)
       ? diagram.x_values
