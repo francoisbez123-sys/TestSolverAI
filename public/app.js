@@ -607,7 +607,7 @@ function createSvgText(
   return el;
 }
 
-  const xs =function buildTrigGraph(diagram) {
+  function buildTrigGraph(diagram) {
   const curves = Array.isArray(diagram?.curves) ? diagram.curves.filter(curve =>
     ["sin", "cos"].includes(curve?.function_type) &&
     [curve.amplitude, curve.frequency, curve.phase_degrees, curve.vertical_shift].every(Number.isFinite)
