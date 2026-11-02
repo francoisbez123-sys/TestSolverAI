@@ -607,6 +607,98 @@ function createSvgText(
   return el;
 }
 
+  const xs =function buildTrigGraph(diagram) {
+  const curves = Array.isArray(diagram?.curves) ? diagram.curves.filter(curve =>
+    ["sin", "cos"].includes(curve?.function_type) &&
+    [curve.amplitude, curve.frequency, curve.phase_degrees, curve.vertical_shift].every(Number.isFinite)
+  ) : [];
+  const xMin = diagram?.x_min;
+  const xMax = diagram?.x_max;
+  if (!curves.length || !Number.isFinite(xMin) || !Number.isFinite(xMax) || xMax <= xMin) return null;
+
+  const width = 720, height = 410, left = 90, right = 35, top = 30, bottom = 75;
+  const plotW = width - left - right, plotH = height - top - bottom;
+  const xSpan = xMax - xMin;
+  const sampleCount = Math.min(1200, Math.max(2, Math.ceil(xSpan * 2)));
+  const valueAt = (curve, x) => {
+    const angle = (curve.frequency * x + curve.phase_degrees) * Math.PI / 180;
+    return curve.amplitude * (curve.function_type === "sin" ? Math.sin(angle) : Math.cos(angle)) + curve.vertical_shift;
+  };
+  const yValues = [];
+  curves.forEach(curve => {
+    const angles = [curve.frequency * xMin + curve.phase_degrees, curve.frequency * xMax + curve.phase_degrees];
+    yValues.push(valueAt(curve, xMin), valueAt(curve, xMax));
+    if (curve.frequency !== 0) {
+      const offset = curve.function_type === "sin" ? 90 : 0;
+      const first = Math.ceil((Math.min(...angles) - offset) / 180);
+      const last = Math.floor((Math.max(...angles) - offset) / 180);
+      for (let k = first; k <= last; k++) {
+        const x = (offset + 180 * k - curve.phase_degrees) / curve.frequency;
+        if (x >= xMin && x <= xMax) yValues.push(valueAt(curve, x));
+      }
+    }
+  });
+
+  function niceStep(span, target) {
+    const raw = span / target, magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
+    const f = raw / magnitude;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * magnitude;
+  }
+  const xStep = niceStep(xSpan, 8);
+  const xTicks = [];
+  for (let x = Math.ceil(xMin / xStep) * xStep; x <= xMax + xStep * 1e-10; x += xStep) xTicks.push(Math.abs(x) < 1e-10 ? 0 : x);
+  if (!xTicks.length || Math.abs(xTicks[0] - xMin) > 1e-8) xTicks.unshift(xMin);
+  if (Math.abs(xTicks[xTicks.length - 1] - xMax) > 1e-8) xTicks.push(xMax);
+
+  const yMin = Math.min(0, ...yValues), yMax = Math.max(0, ...yValues);
+  const yStep = niceStep(yMax - yMin || 1, 5);
+  const yLow = Math.floor(yMin / yStep) * yStep, yHigh = Math.ceil(yMax / yStep) * yStep;
+  const yTicks = [];
+  for (let y = yLow; y <= yHigh + yStep * 1e-10; y += yStep) yTicks.push(Math.abs(y) < 1e-10 ? 0 : y);
+  const decimals = step => Math.max(0, Math.min(8, -Math.floor(Math.log10(step))));
+  const fmt = (v, step) => Number(v.toFixed(decimals(step))).toString();
+  const px = x => left + (x - xMin) / xSpan * plotW;
+  const py = y => top + plotH - (y - yLow) / (yHigh - yLow) * plotH;
+  const axisX = px(Math.max(xMin, Math.min(xMax, 0)));
+  const axisY = py(Math.max(yLow, Math.min(yHigh, 0)));
+  const svg = createSvgElement("svg", { viewBox: "0 0 " + width + " " + height, width: "100%", height: "auto" });
+
+  xTicks.forEach(x => { if (x !== 0) svg.appendChild(createSvgElement("line", { x1: px(x), y1: top, x2: px(x), y2: top + plotH, stroke: "#d9dee7", "stroke-width": 1 })); });
+  yTicks.forEach(y => { if (y !== 0) svg.appendChild(createSvgElement("line", { x1: left, y1: py(y), x2: left + plotW, y2: py(y), stroke: "#d9dee7", "stroke-width": 1 })); });
+  svg.appendChild(createSvgElement("line", { x1: axisX, y1: top, x2: axisX, y2: top + plotH, stroke: "black", "stroke-width": 2 }));
+  svg.appendChild(createSvgElement("line", { x1: left, y1: axisY, x2: left + plotW, y2: axisY, stroke: "black", "stroke-width": 2 }));
+  xTicks.forEach(x => {
+    svg.appendChild(createSvgElement("line", { x1: px(x), y1: axisY - 5, x2: px(x), y2: axisY + 5, stroke: "black", "stroke-width": 1.2 }));
+    svg.appendChild(createSvgText(fmt(x, xStep), { x: px(x), y: axisY + 22, "text-anchor": "middle", "font-size": 13 }));
+  });
+  yTicks.forEach(y => {
+    svg.appendChild(createSvgElement("line", { x1: axisX - 5, y1: py(y), x2: axisX + 5, y2: py(y), stroke: "black", "stroke-width": 1.2 }));
+    svg.appendChild(createSvgText(fmt(y, yStep), { x: axisX - 11, y: py(y) + 4, "text-anchor": "end", "font-size": 13 }));
+  });
+  const colors = ["#1769aa", "#c0392b", "#16804a", "#7a3db8"];
+  curves.forEach((curve, ci) => {
+    const commands = [];
+    for (let i = 0; i <= sampleCount; i++) {
+      const x = xMin + xSpan * i / sampleCount;
+      commands.push((i ? "L" : "M") + px(x) + "," + py(valueAt(curve, x)));
+    }
+    const color = colors[ci % colors.length];
+    svg.appendChild(createSvgElement("path", { d: commands.join(" "), fill: "none", stroke: color, "stroke-width": 2.5, "stroke-linecap": "round", "stroke-linejoin": "round" }));
+    const ly = top + 15 + ci * 19;
+    svg.appendChild(createSvgElement("line", { x1: left + plotW - 160, y1: ly - 4, x2: left + plotW - 140, y2: ly - 4, stroke: color, "stroke-width": 2.5 }));
+    svg.appendChild(createSvgText(curve.label || ("y = " + curve.amplitude + " " + curve.function_type + " x"), { x: left + plotW - 134, y: ly, "font-size": 12 }));
+  });
+  svg.appendChild(createSvgText(diagram.x_label || "x", { x: left + plotW / 2, y: height - 16, "text-anchor": "middle", "font-size": 17 }));
+  const yLabel = createSvgText(diagram.y_label || "y", { x: 24, y: top + plotH / 2, "text-anchor": "middle", "font-size": 17 });
+  yLabel.setAttribute("transform", "rotate(-90 24 " + (top + plotH / 2) + ")");
+  svg.appendChild(yLabel);
+  return svg;
+}
+
+function buildLineGraph(
+  diagram
+) {
+  if (Array.isArray(diagram?.curves) && diagram.curves.length) return buildTrigGraph(diagram);
   const xs =
     Array.isArray(diagram?.x_values)
       ? diagram.x_values
