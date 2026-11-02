@@ -179,7 +179,7 @@ const MEMO_SCHEMA = {
                           "x_label",
                           "y_label",
                           "x_values",
-                          "y_values",
+                          "y_values", "x_min", "x_max", "curves",
                           "svg"
                         ],
 
@@ -223,7 +223,7 @@ const MEMO_SCHEMA = {
                             }
                           },
 
-                          svg: {
+                          x_min: { type: "number" }, x_max: { type: "number" }, curves: { type: "array", items: { type: "object", additionalProperties: false, required: ["function_type", "amplitude", "frequency", "phase_degrees", "vertical_shift", "label"], properties: { function_type: { type: "string", enum: ["sin", "cos"] }, amplitude: { type: "number" }, frequency: { type: "number" }, phase_degrees: { type: "number" }, vertical_shift: { type: "number" }, label: { type: "string" } } } }, svg: {
                             type: "string"
                           }
                         }
@@ -712,9 +712,9 @@ type = "graph"
 diagram.kind = "line_graph"
 
 
-Provide correct coordinate arrays.
+For ordinary point-based graphs, provide correct coordinate arrays. For trigonometric graphs, put all requested equations in ONE graph block on ONE shared set of axes. Set diagram.x_min and diagram.x_max to the stated degree interval, label the x-axis in degrees, and add one diagram.curves entry per equation. Encode y=A sin(Bx+C)+D or y=A cos(Bx+C)+D with function_type, amplitude A, frequency B, phase_degrees C, vertical_shift D, and the original equation as label. Use degrees throughout; leave x_values and y_values empty for equation-based curves. Set curves to [] and x_min/x_max to 0 for other graphs. Never split simultaneous curves into separate graph blocks.
 
-Both arrays must contain the same number of values, with at least two paired points. Preserve the graph's intended point order and use values from the question or calculate them from the stated relationship; do not invent points.
+For point-based graphs, provide paired x_values and y_values arrays with at least two points, preserving the intended point order. Use values from the question or calculate them from the stated relationship; do not invent points.
 
 Example:
 
